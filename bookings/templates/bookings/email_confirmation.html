@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    {% if update %}
+        <h1>Updated Booking</h1>
+    {% else %}
+        <h1>New Booking</h1>
+    {% endif %}
+    <h2><i>Booked: {{ event.email }}</i></h2>
+    <hr>
+</head>
+<body>
+
+<h3><i>Booking details</i></h3>
+<p>
+    Name: {{ event.first_name }} {{ event.last_name }}<br/>
+    Start: {{  start_time_formatted }}<br/>
+    End: {{ end_time_formatted }}<br/>
+    Duration: {{ event.duration }} minutes<br/>
+    <br/>
+    <a href="http://127.0.0.1:8000{% url 'bookings:display_available_time_slots' name=event.username pk=event.user_pk event_pk=event.pk %}">
+        Click here to update this booking</a> <br/>
+    <a href="http://127.0.0.1:8000{% url 'bookings:cancel_booking_slot' event_pk=event.pk%}">Click here to cancel this booking</a>
+</p>
+</body>
+</html>

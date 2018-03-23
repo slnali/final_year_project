@@ -1,0 +1,55 @@
+{% extends "bookings/layout.html" %}
+{% block content %}
+    <h1>Your Availability Preferences</h1>
+    <form class="post-form" method="POST" id="availabilityForm" data-duration-url="{% url 'bookings:ajax_load_booking_durations' %}" novalidate>
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+      {% for hidden_field in form.hidden_fields %}
+        {{ hidden_field.errors }}
+        {{ hidden_field }}
+      {% endfor %}
+        {%  for field in form.visible_fields %}
+            <div class="container">
+                <div class="row">
+                     <div class="col-sm-6" style="position: relative">
+                         <label class="mylabel">{{ field.label }}</label>
+                         {{ field.errors }}
+                         {{ field }}
+                         {{ field.help_text }}
+                  </div>
+              </div>
+           </div>
+        {% endfor %}
+         <button type="submit" class='save btn btn-default' name="button">Save</button>
+    </form>
+
+    <script type="text/javascript">
+
+    $(function () {
+        $('.datetimepicker12').datetimepicker({
+            format: 'LT',
+        });
+    });
+    </script>
+{#    'availability_increment','booking_duration'#}
+{#    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>#}
+    <script>
+    $("#id_availability_increment").change(function () {
+      var url = $("#availabilityForm").attr("data-duration-url");  // get the url of the `load_cities` view
+      var incrementId = $(this).val();  // get the selected country ID from the HTML input
+
+      $.ajax({                       // initialize an AJAX request
+        url: url,                    // set the url of the request (= localhost:8000/hr/ajax/load-cities/)
+        data: {
+          'availability_increment': incrementId       // add the country id to the GET parameters
+        },
+        success: function (data) {   // `data` is the return of the `load_cities` view function
+          $("#id_booking_duration").html(data);  // replace the contents of the city input with the data that came from the server
+        }
+      });
+
+    });
+  </script>
+
+{% endblock %}

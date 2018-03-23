@@ -1,0 +1,23 @@
+{% extends "bookings/layout.html" %}
+{% load socialaccount %}
+{% block content %}
+<h1>Your Events</h1>
+    {% if user.socialaccount_set.get.availability_prefs %}
+        <a href="{% url 'bookings:display_available_time_slots' name=user.username pk=user.pk %}" >Your booking url</a>
+    {% endif %}
+<table class="table">
+  <tr>
+    <th>Subject</th>
+    <th>Start</th>
+    <th>End</th>
+  </tr>
+
+  {% for event in events %}
+    <tr>
+      <td>{{ event.subject }}</td>
+      <td>{{ event.start.dateTime }} ({{ event.start.timeZone }})</td>
+      <td>{{ event.end.dateTime }} ({{ event.end.timeZone }})</td>
+    </tr>
+  {% endfor %}
+</table>
+{% endblock %}

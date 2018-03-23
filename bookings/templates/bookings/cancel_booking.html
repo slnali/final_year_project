@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <h1>Cancel Booking</h1>
+
+    <hr>
+</head>
+<body>
+
+<h3><b>You are about to cancel the following booking:</b></h3>
+<h2>{{ event.date_time }}</h2>
+<h2>Are you sure you wish to cancel this appointment?</h2>
+<form name="cancel_booking_slot" method="post" action="{% url 'bookings:cancel_booking_slot' event_pk=event.pk %}">
+    {% csrf_token %}
+    <input type="submit" value="Confirm Cancellation" />
+</form>
+</body>
+</html>

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <h1>Update Booking</h1>
+
+    <hr>
+</head>
+<body>
+
+<h2><b>You are about to change the start time of your booking:</b></h2>
+<h3>Old start time: {{ event.date_time }}</h3>
+<h3>New start time: {{ updated_start }}</h3>
+<h3>Duration: {{ duration }} minutes</h3>
+<h3>Are you sure you wish to reschedule your booking?</h3>
+<form name="confirm_slot_reschedule" method="post" action="{% url 'bookings:confirm_slot_reschedule' slot=slot date=date event_pk=event.pk duration=duration %}">
+    {% csrf_token %}
+    <input type="submit" value="Confirm Reschedule" />
+</form>
+</body>
+</html>
