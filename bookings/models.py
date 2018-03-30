@@ -153,13 +153,16 @@ class BookingAvailability(models.Model):
         return True if start_time <= current_time < end_time else False
 
 
-    def get_outlook_events(self,dates):
+    def get_outlook_events(self,dates,as_timzone=False):
         token = self.account_social.socialtoken_set.get()
         if token.expires_at < timezone.now():
             set_new_token(token)
         email = self.account_social.user.email
         outlook_events = get_events_between_dates(access_token=token, user_email=email,
-                                                  start_date=dates[0].isoformat(), end_date=dates[-1].isoformat())
+                                                  start_date=dates[0].isoformat() if not as_timzone else
+                                                  dates[0].astimezone().isoformat(),
+                                                  end_date=dates[-1].isoformat() if not as_timzone else
+                                                  dates[-1].astimezone().isoformat(),)
         return outlook_events
 
     def parse_outlook_events_into_dict(self,outlook_output):

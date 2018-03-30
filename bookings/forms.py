@@ -76,7 +76,7 @@ class EventBookingForm(forms.ModelForm):
         start_time = self.booking_date + datetime.timedelta(minutes=1) #add one minute to avoid collision with currently ending event
         last_possible_time = self.booking_date + datetime.timedelta(minutes=self.booking_availability.booking_duration)
         outlook_events_within_booking_duration = self.booking_availability.parse_outlook_events_into_dict(
-            self.booking_availability.get_outlook_events([start_time, last_possible_time]))
+            self.booking_availability.get_outlook_events([ start_time,last_possible_time],as_timzone=True))
         possible_durations = self.get_choices_within_event_range(default_choices,
                                                                  outlook_events_within_booking_duration)
         possible_durations = self.tuplify_choices(possible_durations)
@@ -85,6 +85,8 @@ class EventBookingForm(forms.ModelForm):
     def tuplify_choices(self, durations):
         return tuple([(duration, duration) for duration in durations])
 
+    #FIX CASE 9:20 - 9:40 BOOKED 1 MEETING, 9:00 - 9:20 BOOKED ANOTHER MEETING THEN UPDATED TO 8:40 CHOICES LIMIT TO 40 MIN WHEREAS NOW WOULD BE 60 MINUTES...
+    #SO 2 EVENTS
     def get_choices_within_event_range(self, choices, events):
         possible_choices = []
         date_end_time = self.booking_availability.get_day_availability_dict().get(self.booking_date.strftime('%A'))['end']
@@ -93,7 +95,7 @@ class EventBookingForm(forms.ModelForm):
             if events: #multi tenancy someone booked same slot at moment
                 event = events[0]  # min of one event disrupts booking, we dont care if 2 events disrupt
                 if self.booking_date + datetime.timedelta(minutes=choice) <= event['start'] or\
-                        (self.existing_event.start_time.replace(tzinfo=None) == event['start'] if self.existing_event else False):
+                        (self.existing_event.start_time.astimezone().replace(tzinfo=None) == event['start'] if self.existing_event else False):
                     if self.booking_date + datetime.timedelta(minutes=choice) <= date_end_date:  # MIGHT NOT NEED THIS BIT
                         possible_choices.append(choice)
             else:

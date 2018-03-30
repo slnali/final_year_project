@@ -141,12 +141,12 @@ def update_booking(access_token,user_email,event,body_content):
             "content": body_content
         },
         "start": {
-            "dateTime": event['start_time'].isoformat(),
-            "timeZone": "UTC"
+            "dateTime": event['start_time'].astimezone().isoformat(),
+            "timeZone": "Europe/London"
         },
         "end": {
-            "dateTime": event['end_time'].isoformat(),
-            "timeZone": "UTC"
+            "dateTime": event['end_time'].astimezone().isoformat(),
+            "timeZone":"Europe/London"
         },
     }
     r = make_api_call('PATCH', event_endpoint, access_token, user_email, payload=payload)
@@ -176,12 +176,12 @@ def book_event(access_token, user_email, event, body_content):
             "content": body_content
         },
         "start": {
-            "dateTime": event['start_time'].isoformat(),
-            "timeZone": "UTC"
+            "dateTime": event['start_time'].astimezone().isoformat(),
+            "timeZone": "Europe/London"
         },
         "end": {
-            "dateTime": event['end_time'].isoformat(),
-            "timeZone": "UTC"
+            "dateTime": event['end_time'].astimezone().isoformat(),
+            "timeZone": "Europe/London"
         },
         "attendees": [
             {
