@@ -6,17 +6,15 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.core.urlresolvers import reverse
 from django.template.loader import render_to_string
 from django.views.generic import CreateView, DetailView
-import django_tables2 as tables
 from django_tables2 import RequestConfig
-from django_tables2 import A
-from django_tables2 import columns
+
+from bookings.booking_grid import BookingGrid
 from bookings.authhelper import get_signin_url, get_token_from_code, get_access_token, get_token_from_refresh_token, \
     set_new_token
 # Add import statement to include new function
-from bookings.outlookservice import get_me, get_my_messages, get_my_events, cancel_booking, book_event, update_booking
+from bookings.outlookservice import get_me, get_my_events, cancel_booking, book_event, update_booking
 from allauth.socialaccount.models import SocialToken, SocialAccount
 from bookings.forms import BookingAvailabilityForm, EventBookingForm, UpdateEventBookingForm
-from django.contrib.auth.mixins import LoginRequiredMixin
 from bookings.models import BookingAvailability, Event
 from django.utils import timezone
 from django.utils.timezone import make_aware
@@ -69,19 +67,6 @@ def events(request):
     events = get_my_events(access_token, user_email)
     context = {'events': events['value']}
     return render(request, 'bookings/events.html', context)
-
-
-'''
-class PersonCreateView(CreateView):
-    model = Person
-    form_class = PersonForm
-    success_url = reverse_lazy('person_changelist')
-class PersonUpdateView(UpdateView):
-    model = Person
-    form_class = PersonForm
-    success_url = reverse_lazy('person_changelist') TRY ADDING THESE DESIGN PATTERNS OR JUST CREATE A CBV
-    FROM SCRATCH E.G. def get(),  def post() looks cleaner '''
-
 
 def set_account_availability(request):
     account = SocialAccount.objects.filter(user__id=request.user.pk, provider='microsoft')[0]
@@ -249,63 +234,7 @@ def get_booking_duration_choices(increment):
 
 
 def display_available_time_slots(request, name, pk, date=None, action=None, event_pk=0):
-    class BookingSlotsTable(tables.Table):
-        days = BookingAvailability.get_next_7_days(datetime.datetime.today().date(), format=True)# set BookingSlotsTable.days
-        current_day_plus_0 = tables.LinkColumn(accessor=days[0], verbose_name=days[0],
-                                               viewname='bookings:book_meeting_slot', args=[A(days[0]), days[0], pk])
-        current_day_plus_1 = tables.LinkColumn(accessor=days[1], verbose_name=days[1],
-                                               viewname='bookings:book_meeting_slot', args=[A(days[1]), days[1], pk])
-        current_day_plus_2 = tables.LinkColumn(accessor=days[2], verbose_name=days[2],
-                                               viewname='bookings:book_meeting_slot', args=[A(days[2]), days[2], pk])
-        current_day_plus_3 = tables.LinkColumn(accessor=days[3], verbose_name=days[3],
-                                               viewname='bookings:book_meeting_slot', args=[A(days[3]), days[3], pk])
-        current_day_plus_4 = tables.LinkColumn(accessor=days[4], verbose_name=days[4],
-                                               viewname='bookings:book_meeting_slot', args=[A(days[4]), days[4], pk])
-        current_day_plus_5 = tables.LinkColumn(accessor=days[5], verbose_name=days[5],
-                                               viewname='bookings:book_meeting_slot', args=[A(days[5]), days[5], pk])
-        current_day_plus_6 = tables.LinkColumn(accessor=days[6], verbose_name=days[6],
-                                               viewname='bookings:book_meeting_slot', args=[A(days[6]), days[6], pk])
-
-        # var = 'current_day_plus_{}'
-        # i = 0
-        # for day in days:
-        #     locals().update({var.format(i): tables.LinkColumn(accessor=days[i], verbose_name=days[i],
-        #                                                       viewname='bookings:book_meeting_slot',
-        #                                                       args=[A(days[i]), days[i]])})
-        #     i += 1
-
-        class Meta:
-            template_name = 'django_tables2/bootstrap-responsive.html'
-            attrs = {'width': 700, 'align': 'center'}
-
-        def __init__(self, *args, **kwargs):
-            super(BookingSlotsTable, self).__init__(*args)
-            self.days = kwargs.get('days')  # days
-            self.viewname = kwargs.get('viewname', 'bookings:book_meeting_slot')
-            self.event_pk = kwargs.get('event_pk', 0)
-            self.base_columns['current_day_plus_0'] = tables.LinkColumn(accessor=days[0], verbose_name=days[0],
-                                                                        viewname=self.viewname,
-                                                                        args=[A(days[0]), days[0], pk, self.event_pk])
-            self.base_columns['current_day_plus_1'] = tables.LinkColumn(accessor=days[1], verbose_name=days[1],
-                                                                        viewname=self.viewname,
-                                                                        args=[A(days[1]), days[1], pk, self.event_pk])
-            self.base_columns['current_day_plus_2'] = tables.LinkColumn(accessor=days[2], verbose_name=days[2],
-                                                                        viewname=self.viewname,
-                                                                        args=[A(days[2]), days[2], pk, self.event_pk])
-            self.base_columns['current_day_plus_3'] = tables.LinkColumn(accessor=days[3], verbose_name=days[3],
-                                                                        viewname=self.viewname,
-                                                                        args=[A(days[3]), days[3], pk, self.event_pk])
-            self.base_columns['current_day_plus_4'] = tables.LinkColumn(accessor=days[4], verbose_name=days[4],
-                                                                        viewname=self.viewname,
-                                                                        args=[A(days[4]), days[4], pk, self.event_pk])
-            self.base_columns['current_day_plus_5'] = tables.LinkColumn(accessor=days[5], verbose_name=days[5],
-                                                                        viewname=self.viewname,
-                                                                        args=[A(days[5]), days[5], pk, self.event_pk])
-            self.base_columns['current_day_plus_6'] = tables.LinkColumn(accessor=days[6], verbose_name=days[6],
-                                                                        viewname=self.viewname,
-                                                                        args=[A(days[6]), days[6], pk, self.event_pk])
-            self.columns = columns.BoundColumns(self, self.base_columns)
-
+    '''TODO IF EVENT DOESNT EXIST DISPLAY MESSAGE EVENT HAS BEEN CANCELLED AND CANNOT BE UPDATED'''
     account = SocialAccount.objects.filter(user__id=int(pk))[0]  # change to pk in url!!!!!! e.g. random user
     booking_availabilty_preferences = BookingAvailability.objects.filter(account_social__id=account.pk)[0]
     if date:
@@ -326,9 +255,9 @@ def display_available_time_slots(request, name, pk, date=None, action=None, even
     table_data = booking_availabilty_preferences.get_time_slot_data(start_date=date)
     days = BookingAvailability.get_next_7_days(date, format=True)
     if int(event_pk):  # because sometimes '0' string is passed when no event is needed
-        table = BookingSlotsTable(table_data, days=days, viewname='bookings:update_meeting_slot', event_pk=int(event_pk))
+        table = BookingGrid(table_data, days=days, pk = int(pk), viewname='bookings:update_meeting_slot', event_pk=int(event_pk))
     else:
-        table = BookingSlotsTable(table_data, days=days)
+        table = BookingGrid(table_data, days=days, pk =int(pk))
     # using RequestConfig automatically pulls values from request.GET and updates the table accordingly
     # this enables data ordering and pagination
     RequestConfig(request, paginate=False).configure(table)
