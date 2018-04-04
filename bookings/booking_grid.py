@@ -1,7 +1,5 @@
 import django_tables2 as tables
 from django_tables2 import A, columns
-
-
 # var = 'current_day_plus_{}'
 # i = 0
 # for day in days:

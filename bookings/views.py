@@ -9,8 +9,7 @@ from django.views.generic import CreateView, DetailView
 from django_tables2 import RequestConfig
 
 from bookings.booking_grid import BookingGrid
-from bookings.authhelper import get_signin_url, get_token_from_code, get_access_token, get_token_from_refresh_token, \
-    set_new_token
+from bookings.authhelper import get_signin_url, get_token_from_code, set_new_token
 # Add import statement to include new function
 from bookings.outlookservice import get_me, get_my_events, cancel_booking, book_event, update_booking
 from allauth.socialaccount.models import SocialToken, SocialAccount
@@ -56,7 +55,6 @@ def gettoken(request):
 
 
 def events(request):
-    # access_token = get_access_token(request, request.build_absolute_uri(reverse('bookings:gettoken')))
     token_obj = SocialToken.objects.filter(account__user__id=request.user.pk, account__provider='microsoft')[0]
     user_email = request.user.email
     # Check if token has expired

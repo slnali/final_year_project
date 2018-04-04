@@ -87,33 +87,7 @@ def get_token_from_refresh_token(refresh_token, redirect_uri):
         return 'Error retrieving token: {0} - {1}'.format(r.status_code, r.text)
 
 
-def get_access_token(request, redirect_uri):
-    '''The function will check the expiration time, and if the token is expired,
-    will refresh it. Otherwise it will just return the access token from the session'''
-    current_token = request.session['access_token']
-    expiration = request.session['token_expires']
-    now = int(time.time())
-    if current_token and now < expiration:
-        # Token still valid
-        return current_token
-    else:
-        # Token expired
-        refresh_token = request.session['refresh_token']
-        new_tokens = get_token_from_refresh_token(refresh_token, redirect_uri)
 
-        # Update session
-        # expires_in is in seconds
-        # Get current timestamp (seconds since Unix Epoch) and
-        # add expires_in to get expiration time
-        # Subtract 5 minutes to allow for clock differences
-        expiration = int(time.time()) + new_tokens['expires_in'] - 300
-
-        # Save the token in the session
-        request.session['access_token'] = new_tokens['access_token']
-        request.session['refresh_token'] = new_tokens['refresh_token']
-        request.session['token_expires'] = expiration
-
-        return new_tokens['access_token']
 
 
 def set_new_token(token_obj):
