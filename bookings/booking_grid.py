@@ -1,35 +1,23 @@
-import datetime
 import django_tables2 as tables
 from django_tables2 import A, columns
 
-from bookings.models import BookingAvailability
 
+# var = 'current_day_plus_{}'
+# i = 0
+# for day in days:
+#     locals().update({var.format(i): tables.LinkColumn(accessor=days[i], verbose_name=days[i],
+#                                                       viewname='bookings:book_meeting_slot',
+#                                                       args=[A(days[i]), days[i]])})
+#     i += 1
 
 class BookingGrid(tables.Table):
-    days = BookingAvailability.get_next_7_days(datetime.datetime.today().date(),
-                                               format=True)  # set BookingSlotsTable.days
-    current_day_plus_0 = tables.LinkColumn(accessor=days[0], verbose_name=days[0],
-                                           viewname='bookings:book_meeting_slot', args=[A(days[0]), days[0]])
-    current_day_plus_1 = tables.LinkColumn(accessor=days[1], verbose_name=days[1],
-                                           viewname='bookings:book_meeting_slot', args=[A(days[1]), days[1]])
-    current_day_plus_2 = tables.LinkColumn(accessor=days[2], verbose_name=days[2],
-                                           viewname='bookings:book_meeting_slot', args=[A(days[2]), days[2], ])
-    current_day_plus_3 = tables.LinkColumn(accessor=days[3], verbose_name=days[3],
-                                           viewname='bookings:book_meeting_slot', args=[A(days[3]), days[3], ])
-    current_day_plus_4 = tables.LinkColumn(accessor=days[4], verbose_name=days[4],
-                                           viewname='bookings:book_meeting_slot', args=[A(days[4]), days[4], ])
-    current_day_plus_5 = tables.LinkColumn(accessor=days[5], verbose_name=days[5],
-                                           viewname='bookings:book_meeting_slot', args=[A(days[5]), days[5], ])
-    current_day_plus_6 = tables.LinkColumn(accessor=days[6], verbose_name=days[6],
-                                           viewname='bookings:book_meeting_slot', args=[A(days[6]), days[6], ])
-
-    # var = 'current_day_plus_{}'
-    # i = 0
-    # for day in days:
-    #     locals().update({var.format(i): tables.LinkColumn(accessor=days[i], verbose_name=days[i],
-    #                                                       viewname='bookings:book_meeting_slot',
-    #                                                       args=[A(days[i]), days[i]])})
-    #     i += 1
+    current_day_plus_0 = tables.LinkColumn()
+    current_day_plus_1 = tables.LinkColumn()
+    current_day_plus_2 = tables.LinkColumn()
+    current_day_plus_3 = tables.LinkColumn()
+    current_day_plus_4 = tables.LinkColumn()
+    current_day_plus_5 = tables.LinkColumn()
+    current_day_plus_6 = tables.LinkColumn()
 
     class Meta:
         template_name = 'django_tables2/bootstrap-responsive.html'
