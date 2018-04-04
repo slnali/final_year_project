@@ -30,11 +30,9 @@
       <div id="navbar" class="navbar-collapse collapse">
         <ul class="nav navbar-nav authed-nav">
 {#       !!!!!!!!!!!     These urls are hardcoded not best practice so refactor !!!!!!!#}
-          <li id='home-nav'><a href="/">Home</a></li>
-          <li id='calendar-nav'><a href="/bookings/events">Calendar</a></li>
-            <li id='inbox-nav'><a href="/bookings/mail">Inbox</a></li>
-            <li id='inbox-nav'><a href="{% url 'bookings:set_account_availability' %}">Booking Preferences</a></li>
-           <li id='inbox-nav'><a href="/accounts/logout">Sign Out</a></li>
+          <li id='home-nav'><a href="{% url 'bookings:events' %}">Home</a></li>
+            <li id='prefs-nav'><a href="{% url 'bookings:set_account_availability' %}">Booking Preferences</a></li>
+           <li id='logout-nav'><a href="{% url 'account_logout' %}">Sign Out</a></li>
         </ul>
       </div>
     </div>

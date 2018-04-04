@@ -171,7 +171,7 @@ def book_meeting_slot(request, slot, date, pk, event_pk):
         return render(request, 'bookings/event_booking_form.html', {'form': form})
     # return HttpResponse('Booking for {} on {}'.format(slot, date))
 
-
+'''REFACTOR THIS NAME!!!!'''
 def update_meeting_slot(request, slot, date, pk, event_pk):
     account = SocialAccount.objects.filter(user__id=int(pk))[0]
     event = Event.objects.filter(pk=int(event_pk))[0]
