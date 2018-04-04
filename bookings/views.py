@@ -25,7 +25,7 @@ from django.core.mail import send_mail
 
 # Create your views here.
 
-
+'''Connect to outlook view'''
 def home(request):
     redirect_uri = request.build_absolute_uri(reverse('bookings:gettoken'))
     sign_in_url = get_signin_url(redirect_uri)
@@ -55,19 +55,6 @@ def gettoken(request):
     request.session['user_email'] = user['mail']
     return HttpResponseRedirect(reverse('bookings:events'))
 
-
-def mail(request):
-    # access_token = get_access_token(request, request.build_absolute_uri(reverse('tutorial:gettoken')))
-    token_obj = SocialToken.objects.filter(account__user__id=request.user.pk, account__provider='microsoft')[0]
-    user_email = request.user.email
-    # Check if token has expired
-    if token_obj.expires_at < timezone.now():
-        # refresh token
-        set_new_token(token_obj)
-    access_token = token_obj.token
-    messages = get_my_messages(access_token, user_email)
-    context = {'messages': messages['value']}
-    return render(request, 'bookings/mail.html', context)
 
 
 def events(request):

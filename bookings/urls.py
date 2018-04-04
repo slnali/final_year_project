@@ -12,9 +12,7 @@ urlpatterns = [
     url(r'^home/$', views.home, name='home'),
     # Redirect to get token ('/bookings/gettoken/')
     url(r'^gettoken/$', views.gettoken, name='gettoken'),
-    # Mail view ('/bookings/mail/')
-    url(r'^mail/$', views.mail, name='mail'),
-    #Events view ('/tutorial/events/')
+    #Events view ('/bookings/events/')
     url(r'^events/$',views.events,name='events'),
     #Booking preferences view
     url(r'^preferences/$',views.set_account_availability,name='set_account_availability'),

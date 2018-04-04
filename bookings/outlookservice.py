@@ -65,7 +65,7 @@ def get_me(access_token):
     else:
         return "{0}: {1}".format(r.status_code, r.text)
 
-
+'''REDUNDANT REMOVE WHEN CODE NOT NEEDED'''
 def get_my_messages(access_token, user_email):
     '''
     function to implement a request to retrieve messages from the inbox
