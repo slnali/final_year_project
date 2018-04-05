@@ -65,30 +65,6 @@ def get_me(access_token):
     else:
         return "{0}: {1}".format(r.status_code, r.text)
 
-'''REDUNDANT REMOVE WHEN CODE NOT NEEDED'''
-def get_my_messages(access_token, user_email):
-    '''
-    function to implement a request to retrieve messages from the inbox
-    :param access_token:
-    :param user_email:
-    :return:
-    '''
-    get_messages_url = graph_endpoint.format('/me/mailfolders/inbox/messages')
-
-    # Use OData query parameters to control the results
-    #  - Only first 10 results returned
-    #  - Only return the ReceivedDateTime, Subject, and From fields
-    #  - Sort the results by the ReceivedDateTime field in descending order
-    query_parameters = {'$top': '10',
-                        '$select': 'receivedDateTime,subject,from',
-                        '$orderby': 'receivedDateTime DESC'}
-
-    r = make_api_call('GET', get_messages_url, access_token, user_email, parameters=query_parameters)
-
-    if requests.codes.ok == r.status_code:
-        return r.json()
-    else:
-        return "{0}: {1}".format(r.status_code, r.text)
 
 
 def get_my_events(access_token, user_email):
@@ -150,16 +126,17 @@ def update_booking(access_token,user_email,event,body_content):
         },
     }
     r = make_api_call('PATCH', event_endpoint, access_token, user_email, payload=payload)
-    if r.status_code == 200:
+    if r.status_code == requests.codes.ok:
         return r.json()
     else:
-        return "{0}: {1}".format(r.status_code, r.text)
+        return "{}: {} Request: {}".format(r.status_code, r.text, payload)
 
 
 def cancel_booking(access_token, user_email, event_id):
     event_endpoint = graph_endpoint.format('/me/events/{}'.format(event_id))
     r = make_api_call('DELETE', event_endpoint, access_token, user_email)
-    if r.status_code == 204:
+    #check that the request has been processed but no content has been responded (204)
+    if r.status_code == requests.codes.no_content:
         return True
     else:
         return False
@@ -196,7 +173,8 @@ def book_event(access_token, user_email, event, body_content):
 
     r = make_api_call('POST', event_endpoint, access_token, user_email, payload=payload)
 
-    if r.status_code == 201:
+    #check if resource has been created (201)
+    if r.status_code == requests.codes.created:
         return r.json()
     else:
-        return "{0}: {1}".format(r.status_code, r.text)
+        return "{}: {} Request: {}".format(r.status_code, r.text, payload)

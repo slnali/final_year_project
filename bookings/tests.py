@@ -1,3 +1,5 @@
+import json
+
 from django.test import TestCase, RequestFactory
 import datetime
 from django.test import TestCase
@@ -9,6 +11,8 @@ from .models import BookingAvailability
 from django.contrib.auth.models import User
 from freezegun import freeze_time
 from unittest.mock import patch
+import responses
+from bookings import outlookservice
 # Create your tests here.
 
 class BookingAvailabilityViewTests(TestCase):
@@ -226,6 +230,165 @@ empty
 
 
 '''
+
+class OutlookServiceTests(TestCase):
+
+    @responses.activate
+    def test_get_my_events_404_error(self):
+        responses.add(responses.GET, 'https://graph.microsoft.com/v1.0/me/events', json={'error': 'not found'}, status=404)
+        resp = outlookservice.get_my_events('token','email')
+        self.assertEquals(resp,'404: {"error": "not found"}')
+
+    @responses.activate
+    def test_get_my_events_200(self):
+        responses.add(responses.GET, 'https://graph.microsoft.com/v1.0/me/events', json={'example': 1},
+                      status=200)
+        resp = outlookservice.get_my_events('token', 'email')
+        self.assertEquals(resp, {'example': 1})
+
+    @responses.activate
+    def test_get_my_events_between_dates_404(self):
+        responses.add(responses.GET, 'https://graph.microsoft.com/v1.0/me/calendarview', json={'error': 'not found'},
+                      status=404)
+        resp = outlookservice.get_events_between_dates('token', 'email','date1','date2')
+        self.assertEquals(resp, '404: {"error": "not found"}')
+
+    @responses.activate
+    def test_get_my_events_between_dates_200(self):
+        responses.add(responses.GET, 'https://graph.microsoft.com/v1.0/me/calendarview', json={'example': 2},
+                      status=200)
+        resp = outlookservice.get_events_between_dates('token', 'email', 'date1', 'date2')
+        self.assertEquals(resp, {'example': 2})
+
+    @responses.activate
+    @freeze_time("2018-02-4 10:21:34")
+    def test_update_booking_404(self):
+        responses.add(responses.PATCH, 'https://graph.microsoft.com/v1.0/me/events/5', json={'error': 'not found'},
+                      status=404)
+        start = datetime.datetime.now()
+        end = start + datetime.timedelta(hours=1)
+        payload = {
+        "subject": 'test',
+        "body": {
+            "contentType": "HTML",
+            "content": 'content'
+        },
+        "start": {
+            "dateTime": "2018-02-04T10:21:34+00:00",
+            "timeZone": "Europe/London"
+        },
+        "end": {
+            "dateTime": "2018-02-04T11:21:34+00:00",
+            "timeZone":"Europe/London"
+        },
+        }
+        event = {'subject':'test', 'outlook_id':5, 'start_time':start , 'end_time':end}
+        resp = outlookservice.update_booking('token', 'email', event, 'content')
+        self.assertEquals(resp, '404: {{"error": "not found"}} Request: {}'.format(payload))
+
+    @responses.activate
+    @freeze_time("2018-04-4 10:21:34")
+    def test_update_booking_404_daylight_savings(self):
+        # daylight savings end of march test onwards
+        responses.add(responses.PATCH, 'https://graph.microsoft.com/v1.0/me/events/5', json={'error': 'not found'},
+                      status=404)
+        start = datetime.datetime.now()
+        end = start + datetime.timedelta(hours=1)
+        payload = {
+            "subject": 'test',
+            "body": {
+                "contentType": "HTML",
+                "content": 'content'
+            },
+            "start": {
+                "dateTime": "2018-04-04T10:21:34+01:00",
+                "timeZone": "Europe/London"
+            },
+            "end": {
+                "dateTime": "2018-04-04T11:21:34+01:00",
+                "timeZone": "Europe/London"
+            },
+        }
+        event = {'subject': 'test', 'outlook_id': 5, 'start_time': start, 'end_time': end}
+        resp = outlookservice.update_booking('token', 'email', event, 'content')
+        self.assertEquals(resp, '404: {{"error": "not found"}} Request: {}'.format(payload))
+
+    @responses.activate
+    @freeze_time("2018-02-4 10:21:34")
+    def test_get_my_events_between_dates_200(self):
+        responses.add(responses.PATCH, 'https://graph.microsoft.com/v1.0/me/events/5', json={'output': 1},
+                      status=200)
+        start = datetime.datetime.now()
+        end = start + datetime.timedelta(hours=1)
+        event = {'subject': 'test', 'outlook_id': 5, 'start_time': start, 'end_time': end}
+        resp = outlookservice.update_booking('token', 'email', event, 'content')
+        self.assertEquals(resp, {'output': 1})
+
+
+    @responses.activate
+    def test_cancel_booking_failed_404(self):
+        responses.add(responses.DELETE, 'https://graph.microsoft.com/v1.0/me/events/5', json={'error': 'not found'},
+                      status=404)
+        resp = outlookservice.cancel_booking('token','email','5')
+        self.assertEquals(resp,False)
+
+    @responses.activate
+    def test_cancel_booking_success_204(self):
+        responses.add(responses.DELETE, 'https://graph.microsoft.com/v1.0/me/events/5', json={'output': 1},
+                      status=204)
+        resp = outlookservice.cancel_booking('token', 'email', '5')
+        self.assertEquals(resp, True)
+
+    @responses.activate
+    @freeze_time("2018-02-4 10:21:34")
+    def test_book_event_404(self):
+        responses.add(responses.POST, 'https://graph.microsoft.com/v1.0/me/events', json={'error': 'not found'},
+                      status=404)
+        start = datetime.datetime.now()
+        end = start + datetime.timedelta(hours=1)
+        event = {'subject': 'test', 'outlook_id': 5, 'start_time': start, 'end_time': end, 'content':'content',
+                 'email': 'email', 'first_name':'name'}
+        payload = {
+            "subject": event['subject'],
+            "body": {
+                "contentType": "HTML",
+                "content": event['content'],
+            },
+            "start": {
+                "dateTime": event['start_time'].astimezone().isoformat(),
+                "timeZone": "Europe/London"
+            },
+            "end": {
+                "dateTime": event['end_time'].astimezone().isoformat(),
+                "timeZone": "Europe/London"
+            },
+            "attendees": [
+                {
+                    "emailAddress": {
+                        "address": event['email'],
+                        "name": event['first_name'],
+                    },
+                    "type": "optional"
+                }
+            ]
+        }
+
+        resp = outlookservice.book_event('token', 'email', event, event['content'])
+        self.assertEquals(resp, '404: {{"error": "not found"}} Request: {}'.format(payload))
+
+    @responses.activate
+    @freeze_time("2018-02-4 10:21:34")
+    def test_book_event_201(self):
+        responses.add(responses.POST, 'https://graph.microsoft.com/v1.0/me/events', json={'output': 1},
+                      status=201)
+        start = datetime.datetime.now()
+        end = start + datetime.timedelta(hours=1)
+        event = {'subject': 'test', 'outlook_id': 5, 'start_time': start, 'end_time': end, 'content': 'content',
+                 'email': 'email', 'first_name': 'name'}
+        resp = outlookservice.book_event('token', 'email', event, event['content'])
+        self.assertEquals(resp, {'output': 1})
+
+
 
 
 
