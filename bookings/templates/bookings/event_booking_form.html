@@ -8,6 +8,10 @@
     <form class="post-form" method="POST">
         {% csrf_token %}
         {{  form.as_p }}
+        {% if captcha %}
+            <script src='https://www.google.com/recaptcha/api.js'></script>
+            <div class="g-recaptcha" data-sitekey="6Lc9YVEUAAAAAJM7QsN_XF3gqwollVC1fz5oTac_"></div>
+        {% endif %}
     <button type="submit" class="save btn btn-default" name="button">Confirm</button>
     </form>
 {% endblock %}

@@ -25,8 +25,6 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
 AUTHENTICATION_BACKENDS = (
 
     # Needed to login by username in Django admin, regardless of `allauth`
@@ -54,6 +52,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.microsoft',
     'bootstrap3_datetime',
     'django_tables2',
+    'captcha',
 ]
 
 MIDDLEWARE = [
@@ -173,3 +172,5 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_USE_TLS = True
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
+
+NOCAPTCHA = True

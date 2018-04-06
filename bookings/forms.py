@@ -3,7 +3,6 @@ from django import forms
 import bookings.views
 from bookings.models import BookingAvailability, Event
 
-
 class BookingAvailabilityForm(forms.ModelForm):
     class Meta:
         model = BookingAvailability

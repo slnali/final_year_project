@@ -1,24 +1,25 @@
+import datetime
 import time
 
-import datetime
-from django.shortcuts import render, redirect
-from django.http import HttpResponse, HttpResponseRedirect
-from django.core.urlresolvers import reverse
-from django.template.loader import render_to_string
-from django.views.generic import CreateView, DetailView
-from django_tables2 import RequestConfig
-
-from bookings.booking_grid import BookingGrid
-from bookings.authhelper import get_signin_url, get_token_from_code, set_new_token
-# Add import statement to include new function
-from bookings.outlookservice import get_me, get_my_events, cancel_booking, book_event, update_booking
+import requests
 from allauth.socialaccount.models import SocialToken, SocialAccount
-from bookings.forms import BookingAvailabilityForm, EventBookingForm, UpdateEventBookingForm
-from bookings.models import BookingAvailability, Event
+from django.conf import settings
+from django.core.mail import send_mail
+from django.core.urlresolvers import reverse
+from django.http import HttpResponse, HttpResponseRedirect
+from django.shortcuts import render, redirect
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.timezone import make_aware
-from django.core.mail import send_mail
-
+from django.views.generic import DetailView
+from django_tables2 import RequestConfig
+from django.contrib import messages
+from bookings.authhelper import get_signin_url, get_token_from_code, set_new_token
+from bookings.booking_grid import BookingGrid
+from bookings.forms import BookingAvailabilityForm, EventBookingForm, UpdateEventBookingForm
+from bookings.models import BookingAvailability, Event
+# Add import statement to include new function
+from bookings.outlookservice import get_me, get_my_events, cancel_booking, book_event, update_booking
 
 # Create your views here.
 
@@ -97,6 +98,22 @@ def set_account_availability(request):
         return render(request, 'bookings/bookingavailability_form.html', {'form': form})
 
 
+def validate_recaptcha(request):
+    ''' Begin reCAPTCHA validation '''
+    recaptcha_response = request.POST.get('g-recaptcha-response')
+    data = {
+        'secret': settings.GOOGLE_RECAPTCHA_SECRET_KEY,
+        'response': recaptcha_response
+    }
+    r = requests.post('https://www.google.com/recaptcha/api/siteverify', data=data)
+    result = r.json()
+    if result['success']:
+        return True
+    else:
+        messages.error(request, 'Invalid reCAPTCHA. Please try again.')
+        return False
+
+
 def book_meeting_slot(request, slot, date, pk, event_pk):
     account = SocialAccount.objects.filter(user__id=int(pk))[0]
     token_obj = account.socialtoken_set.get()
@@ -107,7 +124,7 @@ def book_meeting_slot(request, slot, date, pk, event_pk):
     date = datetime.datetime.strptime(slot + ' ' + date, '%H:%M %a %d/%m/%y')
     if request.method == 'POST':
         form = EventBookingForm(date=date, booking_availability=booking_availability, data=request.POST)
-        if form.is_valid():
+        if form.is_valid() and validate_recaptcha(request):
             event = form.save(commit=False)
             event.social_account = account
             event.start_time = make_aware(date)
@@ -133,12 +150,12 @@ def book_meeting_slot(request, slot, date, pk, event_pk):
                 event.delete() # if outlook event is null delete object
                 return HttpResponse('Booking error for {} {}, Error {}'.format(slot, date, response))
         # if not valid
-        return render(request, 'bookings/event_booking_form.html', {'form': form})
+        return render(request, 'bookings/event_booking_form.html', {'form': form, 'captcha':True})
     else:
         # GET request
         form = EventBookingForm(date=date, booking_availability=booking_availability,
                                 initial={'date_time': date.strftime('%A, %-d %B %Y %H:%M')})
-        return render(request, 'bookings/event_booking_form.html', {'form': form})
+        return render(request, 'bookings/event_booking_form.html', {'form': form, 'captcha':True})
     # return HttpResponse('Booking for {} on {}'.format(slot, date))
 
 '''REFACTOR THIS NAME!!!!'''
