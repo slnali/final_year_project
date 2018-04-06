@@ -13,6 +13,13 @@
             <div class="g-recaptcha" data-sitekey="6Lc9YVEUAAAAAJM7QsN_XF3gqwollVC1fz5oTac_"></div>
         {% endif %}
     <button type="submit" class="save btn btn-default" name="button">Confirm</button>
+        {% if messages %}
+          <ul class="messages">
+            {% for message in messages %}
+              <li class="{{ message.tags }}">{{ message }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
     </form>
 {% endblock %}
 </body>

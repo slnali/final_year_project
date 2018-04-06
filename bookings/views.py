@@ -150,6 +150,7 @@ def book_meeting_slot(request, slot, date, pk, event_pk):
                 event.delete() # if outlook event is null delete object
                 return HttpResponse('Booking error for {} {}, Error {}'.format(slot, date, response))
         # if not valid
+        messages.warning(request, 'Please correct the error below.')
         return render(request, 'bookings/event_booking_form.html', {'form': form, 'captcha':True})
     else:
         # GET request
