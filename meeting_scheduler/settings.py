@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 
 from meeting_scheduler.secret_settings import *
 import os
+import socket
 # from meeting_scheduler.secret_settings import *
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -170,7 +171,8 @@ SOCIALACCOUNT_PROVIDERS = {
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_USE_TLS = True
-EMAIL_HOST = 'smtp.gmail.com'
+#python connects to gmail by ipv4
+EMAIL_HOST = socket.gethostbyname('smtp.gmail.com')
 EMAIL_PORT = 587
 
 NOCAPTCHA = True
