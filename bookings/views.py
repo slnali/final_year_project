@@ -99,7 +99,7 @@ def set_account_availability(request):
 
 
 def validate_recaptcha(request):
-    ''' Begin reCAPTCHA validation '''
+    '''reCAPTCHA validation '''
     recaptcha_response = request.POST.get('g-recaptcha-response')
     data = {
         'secret': settings.GOOGLE_RECAPTCHA_SECRET_KEY,
@@ -107,7 +107,7 @@ def validate_recaptcha(request):
     }
     r = requests.post('https://www.google.com/recaptcha/api/siteverify', data=data)
     result = r.json()
-    if result['success']:
+    if result.get('success'):
         return True
     else:
         messages.error(request, 'Invalid reCAPTCHA. Please try again.')
@@ -150,7 +150,7 @@ def book_meeting_slot(request, slot, date, pk, event_pk):
                 event.delete() # if outlook event is null delete object
                 return HttpResponse('Booking error for {} {}, Error {}'.format(slot, date, response))
         # if not valid
-        messages.warning(request, 'Please correct the error below.')
+        messages.warning(request, 'Please correct the error.')
         return render(request, 'bookings/event_booking_form.html', {'form': form, 'captcha':True})
     else:
         # GET request

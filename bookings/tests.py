@@ -1,31 +1,24 @@
-import json
-
-from django.test import TestCase, RequestFactory
 import datetime
-from django.test import TestCase
-from .views import get_booking_duration_choices, set_account_availability
-from django.utils import timezone
-from django.urls import reverse
-from allauth.socialaccount.models import SocialAccount, SocialToken
-from .models import BookingAvailability
-from django.contrib.auth.models import User
-from freezegun import freeze_time
 from unittest.mock import patch
+
 import responses
+from allauth.socialaccount.models import SocialAccount, SocialToken
+from django.contrib.auth.models import User
+from django.test import RequestFactory
+from django.test import TestCase
+from django.urls import reverse
+from freezegun import freeze_time
+
 from bookings import outlookservice
+from bookings import views
+from .models import BookingAvailability
 
 
 # Create your tests here.
 
-class BookingAvailabilityViewTests(TestCase):
-
-    def setUp(self):
-        self.request_factory = RequestFactory()
-        self.user = User.objects.create(username='test_user', password='test_password', email='test_email')
-        self.social_account = SocialAccount.objects.create(user=self.user, provider="microsoft")
-
+class BookingDurationChoiceTests(TestCase):
     def validate_booking_durations(self, increment, result=None):
-        output = result or get_booking_duration_choices(increment)
+        output = result or views.get_booking_duration_choices(increment)
         for elem in output:
             self.assertTrue(elem[0] % increment == 0)
 
@@ -40,32 +33,93 @@ class BookingAvailabilityViewTests(TestCase):
         self.assertContains(response, 20)
         self.validate_booking_durations(10, result=response.context.get('booking_durations'))
 
-    def create_booking_availability_for_account(self):
-        monday_from = datetime.time(7, 0)
-        monday_to = datetime.timezone(17, 0)
-        increment = 20
-        duration = 40
-        return BookingAvailability.objects.create(account_social=self.social_account,
-                                                  monday_from=monday_from, monday_to=monday_to,
-                                                  availability_increment=increment, booking_duration=duration)
 
-    def test_account_availability_get(self):
-        request = self.request_factory.get(reverse('bookings:set_account_availability'))
-        request.user = self.user
-        response = set_account_availability(request)
+class BookingSetAvailabilityViewTests(TestCase):
+
+    def setUp(self):
+        self.user = User.objects.create(username='test_user', password='test_password', email='test_email')
+        self.social_account = SocialAccount.objects.create(user=self.user, provider="microsoft")
+        self.client.force_login(self.user)
+
+    def create_booking_availability_for_account(self, time_from, time_to, increment, duration):
+        monday_from = time_from
+        monday_to = time_to
+        return BookingAvailability.objects.create(
+            account_social=self.social_account,
+            monday_from=monday_from,
+            monday_to=monday_to,
+            availability_increment=increment,
+            booking_duration=duration
+        )
+
+    def test_booking_availability_get(self):
+        response = views.set_account_availability(self.request_factory)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Your Availability Preferences')
         self.assertContains(response, 'datetimepicker12')
 
-    def test_account_availability_get_preferences(self):
-        pass
+    def test_booking_availability_get_preferences(self):
+        self.create_booking_availability_for_account(datetime.time(7, 0), datetime.time(17, 0), 20, 40)
+        response = self.client.get(reverse('bookings:set_account_availability'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="monday_from" value="07:00 AM"')
+        self.assertContains(response, 'name="monday_to" value="05:00 PM"')
+        self.assertContains(response, 'value="20" selected')
+        self.assertContains(response, 'value="40" selected')
 
-    def test_account_availability_post_save_preferences_new(self):
-        pass
+    def test_booking_availability_post_save_preferences_new(self):
+        response = self.client.post(reverse('bookings:set_account_availability'),
+                                    {'monday_from': datetime.time(8, 0),
+                                     'monday_to': datetime.time(18, 0),
+                                     'availability_increment': 10,
+                                     'booking_duration': 30}, follow=True)
+        self.assertRedirects(response, reverse('bookings:set_account_availability'))
+        self.assertEqual(response.status_code, 200)  # redirect
+        self.assertContains(response, 'name="monday_from" value="08:00 AM"')
+        self.assertContains(response, 'name="monday_to" value="06:00 PM"')
+        self.assertContains(response, 'value="10" selected')
+        self.assertContains(response, 'value="30" selected')
 
     def test_account_availability_post_save_preferences_update(self):
-        pass
+        self.create_booking_availability_for_account(datetime.time(7, 0), datetime.time(17, 0), 20, 40)
+        response = self.client.post(reverse('bookings:set_account_availability'),
+                                    {'monday_from': datetime.time(8, 0),
+                                     'monday_to': datetime.time(18, 0),
+                                     'availability_increment': 10,
+                                     'booking_duration': 30}, follow=True)
+        self.assertEqual(response.status_code, 200)  # redirect
+        self.assertContains(response, 'name="monday_from" value="08:00 AM"')
+        self.assertContains(response, 'name="monday_to" value="06:00 PM"')
+        self.assertContains(response, 'value="10" selected')
+        self.assertContains(response, 'value="30" selected')
 
+
+class BookingReCaptchaValidationTests(TestCase):
+
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    @responses.activate
+    def test_validate_recaptcha_true(self):
+        responses.add(responses.POST, 'https://www.google.com/recaptcha/api/siteverify', json={'success': True},
+                      status=200)
+        request = self.factory.post(reverse('bookings:set_account_availability'), {'g-recaptcha-response': True},
+                                    force=True)
+        self.assertTrue(views.validate_recaptcha(request))
+
+    @patch('bookings.views.messages')
+    @responses.activate
+    def test_validate_recaptcha_false(self, messages):
+        responses.add(responses.POST, 'https://www.google.com/recaptcha/api/siteverify', json={},
+                      status=404)
+        request = self.factory.post(reverse('bookings:set_account_availability'), {'g-recaptcha-response': True},
+                                    force=True)
+        resp = views.validate_recaptcha(request)
+        self.assertFalse(resp)
+        messages.error.assert_called_with(request, 'Invalid reCAPTCHA. Please try again.')
+
+class BookingBookMeetingSlotTests(TestCase):
+    pass
 
 class BookingAvailabilityModelTests(TestCase):
 
