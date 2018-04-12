@@ -45,6 +45,8 @@ class BookingAvailability(models.Model):
     saturday_to = models.TimeField(blank=True, null=True)
     sunday_from = models.TimeField(blank=True, null=True)
     sunday_to = models.TimeField(blank=True, null=True)
+    lunch_from = models.TimeField(blank=True, null=True)
+    lunch_to = models.TimeField(blank=True, null=True)
     availability_increment = models.IntegerField(
         choices=AVAILABILITY_INCREMENTS,
         default=10
@@ -73,6 +75,7 @@ class BookingAvailability(models.Model):
 
     def get_time_ranges(self):  # getattr ['monday_,tuesday
         filter_none = lambda lst: [elem for elem in lst if elem is not None]
+        default_start,default_end = [datetime.time(23,59)],[datetime.time(0,0)]
         start_times = [self.monday_from, self.tuesday_from,
                        self.wednesday_from, self.thursday_from,
                        self.friday_from, self.saturday_from,
@@ -81,7 +84,7 @@ class BookingAvailability(models.Model):
                      self.wednesday_to, self.thursday_to,
                      self.friday_to, self.saturday_to,
                      self.sunday_to]
-        return min(filter_none(start_times)), max(filter_none(end_times))
+        return min(filter_none(start_times) or default_start), max(filter_none(end_times) or default_end)
 
     def get_times_by_increment(self, min_time, max_time):
         '''
@@ -119,6 +122,7 @@ class BookingAvailability(models.Model):
             'Friday': {'start': self.friday_from, 'end': self.friday_to},
             'Saturday': {'start': self.saturday_from, 'end': self.saturday_to},
             'Sunday': {'start': self.sunday_from, 'end': self.sunday_to},
+            'Lunch': {'start': self.lunch_from, 'end': self.lunch_to},
         }
 
     def slot_is_available(self, time, day, outlook_events):
@@ -127,7 +131,8 @@ class BookingAvailability(models.Model):
         3 main checks
         1)Current time is after slot? Not availablle
         2)Checks Mon-Sun availabilities on booking availability model instance
-        3)Interfaces with outlook calendar json response to check availability with reference to existing booked events
+        3)Checks whether in lunch break
+        4)Interfaces with outlook calendar json response to check availability with reference to existing booked events
         :param time: datetime.time object e.g. datetime.time(8,0) 8:00AM
         :param day: datetime.date object datetime.date(2018,2,10)
         :return: True/False
@@ -137,9 +142,24 @@ class BookingAvailability(models.Model):
             return False
         if not self.is_slot_within_booking_availability(combined_date_time):
             return False
+        if self.is_slot_within_lunch_break(combined_date_time):
+            return False
         if self.is_slot_within_outlook_event(combined_date_time, outlook_events):
             return False
         return True
+
+    def get_combined_start_end_and_current_datetime(self, start,end,current):
+        combine = lambda time: datetime.datetime.combine(datetime.date.min, time)
+        return combine(start), combine(end), combine(current)
+
+    def is_slot_within_lunch_break(self, datetime_obj):
+        lunch_prefs = self.get_day_availability_dict().get('Lunch')
+        if not lunch_prefs.get('start') or not lunch_prefs.get('end'):
+            return False
+        start_time, end_time, current_time = self.get_combined_start_end_and_current_datetime(
+            start=lunch_prefs['start'], end=lunch_prefs['end'], current=datetime_obj.time()
+        )
+        return True if start_time <= current_time < end_time else False
 
     def is_slot_within_booking_availability(self, datetime_obj):  # within datetimes
         day = datetime_obj.strftime('%A')  # string formatting for day of week e.g. monday,tuesday etc.
@@ -147,9 +167,9 @@ class BookingAvailability(models.Model):
         day_preferences = availability_dict.get(day)
         if not day_preferences.get('start') or not day_preferences.get('end'):
             return False
-        start_time = datetime.datetime.combine(datetime.date.min, day_preferences['start'])
-        end_time = datetime.datetime.combine(datetime.date.min, day_preferences['end'])
-        current_time = datetime.datetime.combine(datetime.date.min, datetime_obj.time())
+        start_time, end_time, current_time = self.get_combined_start_end_and_current_datetime(
+            start=day_preferences['start'], end=day_preferences['end'], current=datetime_obj.time()
+        )
         return True if start_time <= current_time < end_time else False
 
     def get_outlook_events(self, dates, as_timzone=False):

@@ -12,6 +12,7 @@ class BookingAvailabilityForm(forms.ModelForm):
                   'thursday_from', 'thursday_to',
                   'friday_from', 'friday_to', 'saturday_from',
                   'saturday_to', 'sunday_from', 'sunday_to',
+                  'lunch_from', 'lunch_to',
                   'availability_increment', 'booking_duration']
 
         widgets = {
@@ -29,6 +30,8 @@ class BookingAvailabilityForm(forms.ModelForm):
             'saturday_to': forms.TimeInput(attrs={'class': 'form-control datetimepicker12'}),
             'sunday_from': forms.TimeInput(attrs={'class': 'form-control datetimepicker12'}),
             'sunday_to': forms.TimeInput(attrs={'class': 'form-control datetimepicker12'}),
+            'lunch_from': forms.TimeInput(attrs={'class': 'form-control datetimepicker12'}),
+            'lunch_to': forms.TimeInput(attrs={'class': 'form-control datetimepicker12'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -76,8 +79,8 @@ class EventBookingForm(forms.ModelForm):
     def get_duration_choices(self):
         default_choices = self.booking_availability.get_range_of_durations()
         # from now till midnight of current day| should be now and max booking duration if not events return tuplify
-        start_time = self.booking_date + datetime.timedelta(
-            minutes=1)  # add one minute to avoid collision with currently ending event
+        # add one minute to avoid collision with currently ending event
+        start_time = self.booking_date + datetime.timedelta(minutes=1)
         last_possible_time = self.booking_date + datetime.timedelta(minutes=self.booking_availability.booking_duration)
         outlook_events_within_booking_duration = self.booking_availability.parse_outlook_events_into_dict(
             self.booking_availability.get_outlook_events([start_time, last_possible_time], as_timzone=True))
