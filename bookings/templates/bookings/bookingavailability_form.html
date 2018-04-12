@@ -36,16 +36,16 @@
 {#    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>#}
     <script>
     $("#id_availability_increment").change(function () {
-      var url = $("#availabilityForm").attr("data-duration-url");  // get the url of the `load_cities` view
-      var incrementId = $(this).val();  // get the selected country ID from the HTML input
+      var bookingDurationUrl = $("#availabilityForm").attr("data-duration-url");  
+      var incrementValue = $(this).val();
 
-      $.ajax({                       // initialize an AJAX request
-        url: url,                    // set the url of the request (= localhost:8000/hr/ajax/load-cities/)
+      $.ajax({
+        url: bookingDurationUrl,
         data: {
-          'availability_increment': incrementId       // add the country id to the GET parameters
+          'availability_increment': incrementValue
         },
-        success: function (data) {   // `data` is the return of the `load_cities` view function
-          $("#id_booking_duration").html(data);  // replace the contents of the city input with the data that came from the server
+        success: function (data) {
+          $("#id_booking_duration").html(data);
         }
       });
 
