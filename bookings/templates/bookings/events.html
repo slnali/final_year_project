@@ -1,10 +1,14 @@
 {% extends "bookings/layout.html" %}
 {% load socialaccount %}
 {% block content %}
-<h1>Your Events</h1>
-    {% if user.socialaccount_set.get.availability_prefs %}
-        <a href="{% url 'bookings:display_available_time_slots' name=user.username pk=user.pk %}" >Your booking url</a>
-    {% endif %}
+<header>
+    <code>
+        {% if user.socialaccount_set.get.availability_prefs %}
+        <a href="{% url 'bookings:display_available_time_slots' name=user.username pk=user.pk %}" ><h1 align="left">Your Booking Page is Ready.</h1></a>
+        {% endif %}
+        <h1 align="right">Your Events</h1>
+    </code>
+</header>
 <table class="table">
   <tr>
     <th>Subject</th>

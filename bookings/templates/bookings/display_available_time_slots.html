@@ -1,12 +1,14 @@
-{# tutorial/templates/tutorial/people.html #}
+
+{% load static %}
 {% load render_table from django_tables2 %}
 <!doctype html>
 <html>
     <head>
-        <title>{{ name }} | Appointments</title>
-        <h1 class="title" align=center>Booking for {{ name }} </h1>
-        <br><br><br>
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
+        <link rel="stylesheet" href='/static/meeting_scheduler/css/master.css'>
+        <title>{{ name }} | Appointments</title>
+        <h1 align=center>Booking for {{ name }} </h1>
+        <br><br><br>
         {% if appear %}
             <a class="btn btn-primary" style="float:left" href="{% url 'bookings:display_available_time_slots' name=name  pk=pk date=date action=prev event_pk=event_pk %}"><span class="glyphicon glyphicon-chevron-left"></span></a>
         {% endif %}

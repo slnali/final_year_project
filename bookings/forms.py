@@ -3,6 +3,7 @@ from django import forms
 import bookings.views
 from bookings.models import BookingAvailability, Event
 
+
 class BookingAvailabilityForm(forms.ModelForm):
     class Meta:
         model = BookingAvailability
@@ -47,7 +48,6 @@ class BookingAvailabilityForm(forms.ModelForm):
                 self.instance.availability_increment)
 
 
-
 class EventBookingForm(forms.ModelForm):
     class Meta:
         model = Event
@@ -55,10 +55,15 @@ class EventBookingForm(forms.ModelForm):
                   'email', 'duration', 'subject']
 
         widgets = {
-            'date_time': forms.TextInput(attrs={'readonly': 'readonly'})}
+            'date_time': forms.TextInput(attrs={'readonly': 'readonly', 'class': 'form-control'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.TextInput(attrs={'class': 'form-control'}),
+            'subject': forms.TextInput(attrs={'class': 'form-control'}),
+        }
 
     def __init__(self, *args, **kwargs):
-        self.existing_event = kwargs.pop('event',None)
+        self.existing_event = kwargs.pop('event', None)
         self.booking_date = kwargs.pop('date')
         self.booking_availability = kwargs.pop('booking_availability')
         super(EventBookingForm, self).__init__(*args, **kwargs)
@@ -69,13 +74,13 @@ class EventBookingForm(forms.ModelForm):
      test case for retrieving events booked in between slots'''
 
     def get_duration_choices(self):
-        default_choices = self.get_range_of_durations(self.booking_availability.availability_increment,
-                                                      self.booking_availability.booking_duration)
+        default_choices = self.booking_availability.get_range_of_durations()
         # from now till midnight of current day| should be now and max booking duration if not events return tuplify
-        start_time = self.booking_date + datetime.timedelta(minutes=1) #add one minute to avoid collision with currently ending event
+        start_time = self.booking_date + datetime.timedelta(
+            minutes=1)  # add one minute to avoid collision with currently ending event
         last_possible_time = self.booking_date + datetime.timedelta(minutes=self.booking_availability.booking_duration)
         outlook_events_within_booking_duration = self.booking_availability.parse_outlook_events_into_dict(
-            self.booking_availability.get_outlook_events([ start_time,last_possible_time],as_timzone=True))
+            self.booking_availability.get_outlook_events([start_time, last_possible_time], as_timzone=True))
         possible_durations = self.get_choices_within_event_range(default_choices,
                                                                  outlook_events_within_booking_duration)
         possible_durations = self.tuplify_choices(possible_durations)
@@ -84,37 +89,33 @@ class EventBookingForm(forms.ModelForm):
     def tuplify_choices(self, durations):
         return tuple([(duration, duration) for duration in durations])
 
-    #FIX CASE 9:20 - 9:40 BOOKED 1 MEETING, 9:00 - 9:20 BOOKED ANOTHER MEETING THEN UPDATED TO 8:40 CHOICES LIMIT TO 40 MIN WHEREAS NOW WOULD BE 60 MINUTES...
-    #SO 2 EVENTS
+    # FIX CASE 9:20 - 9:40 BOOKED 1 MEETING, 9:00 - 9:20 BOOKED ANOTHER MEETING THEN UPDATED TO 8:40 CHOICES LIMIT TO 40 MIN WHEREAS NOW WOULD BE 60 MINUTES...
+    # SO 2 EVENTS
     def get_choices_within_event_range(self, choices, events):
         possible_choices = []
-        date_end_time = self.booking_availability.get_day_availability_dict().get(self.booking_date.strftime('%A'))['end']
+        date_end_time = self.booking_availability.get_day_availability_dict().get(self.booking_date.strftime('%A'))[
+            'end']
         date_end_date = self.booking_date.replace(hour=date_end_time.hour, minute=date_end_time.minute)
         for choice in choices:
-            if events: #multi tenancy someone booked same slot at moment
+            if events:  # multi tenancy someone booked same slot at moment
                 event = events[0]  # min of one event disrupts booking, we dont care if 2 events disrupt
-                if self.booking_date + datetime.timedelta(minutes=choice) <= event['start'] or\
-                        (self.existing_event.start_time.astimezone().replace(tzinfo=None) == event['start'] if self.existing_event else False):
-                    if self.booking_date + datetime.timedelta(minutes=choice) <= date_end_date:  # MIGHT NOT NEED THIS BIT
+                if self.booking_date + datetime.timedelta(minutes=choice) <= event['start'] or \
+                        (self.existing_event.start_time.astimezone().replace(tzinfo=None) == event[
+                            'start'] if self.existing_event else False):
+                    if self.booking_date + datetime.timedelta(
+                            minutes=choice) <= date_end_date:  # MIGHT NOT NEED THIS BIT
                         possible_choices.append(choice)
             else:
-                if self.booking_date + datetime.timedelta(minutes=choice) <= date_end_date:  # availabilty dict mon,tue,wed
+                if self.booking_date + datetime.timedelta(
+                        minutes=choice) <= date_end_date:  # availabilty dict mon,tue,wed
                     possible_choices.append(choice)
         return possible_choices
 
-    def get_range_of_durations(self, increment, duration):
-        durations = []
-        value = increment
-        while value <= duration:
-            durations.append(value)
-            value += increment
-        return durations
-
 
 class UpdateEventBookingForm(EventBookingForm):
-    #or can have a if condition on init pass through kwargs
+    # or can have a if condition on init pass through kwargs
 
-    def __init__(self, *args,**kwargs):
+    def __init__(self, *args, **kwargs):
         super(UpdateEventBookingForm, self).__init__(*args, **kwargs)
         self.fields['date_time'].widget = forms.HiddenInput()
         self.fields['first_name'].widget = forms.HiddenInput()

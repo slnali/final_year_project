@@ -177,6 +177,7 @@ class BookingAvailability(models.Model):
         return event_lst
 
     def is_slot_within_outlook_event(self, datetime_obj, events):
+        #TODO ACCOUNT FOR CASE 10:20 20 minute bookings is available when 10:30 is booked, need to add logic here
         #events has list of dicts ALGORITHM CAN BE IMPROVED,
         if events:
             for event in events:
@@ -185,7 +186,18 @@ class BookingAvailability(models.Model):
                 if event['start'] <= datetime_obj < event['end']:
                     #if slot is within event duration
                     return True
+                if event['start'] <= datetime_obj + datetime.timedelta(minutes=self.availability_increment) \
+                        <= event['end']: #if at least one meeting slot is possible remain available
+                    return True
         return False
+
+    def get_range_of_durations(self):
+        durations = []
+        value = self.availability_increment
+        while value <= self.booking_duration:
+            durations.append(value)
+            value += self.availability_increment
+        return durations
 
 #re add later
 def custom_validate_kcl_email(email):
