@@ -1,0 +1,12 @@
+
+.navbar-inverse{
+    background: darkblue;
+}
+
+.nav.navbar-nav.authed-nav li a{
+    color: aliceblue;
+}
+
+.navbar-collapse.collapse {
+    color: azure;
+}
