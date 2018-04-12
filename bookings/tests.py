@@ -11,7 +11,7 @@ from freezegun import freeze_time
 
 from bookings import outlookservice
 from bookings import views
-from .models import BookingAvailability
+from .models import BookingAvailability, Event
 
 
 # Create your tests here.
@@ -118,8 +118,77 @@ class BookingReCaptchaValidationTests(TestCase):
         self.assertFalse(resp)
         messages.error.assert_called_with(request, 'Invalid reCAPTCHA. Please try again.')
 
+
 class BookingBookMeetingSlotTests(TestCase):
-    pass
+
+    @freeze_time("2018-02-10 10:20:00")
+    def setUp(self):
+        self.user = User.objects.create(username='test_user', password='test_password', email='test_email')
+        self.social_account = SocialAccount.objects.create(user=self.user, provider="microsoft")
+        self.social_token = SocialToken.objects.create(account_id=1, app_id=1, expires_at=datetime.date(2018, 2, 9))
+        self.client.force_login(self.user)
+        self.booking_availability = self.create_booking_availability_for_account(datetime.time(7, 0),
+                                                                                 datetime.time(17, 0), 20, 40)
+        self.date = datetime.datetime.now()
+        self.time = self.date.time().strftime('%H:%M')
+        self.date_formatted = self.date.date().strftime('%a %d/%m/%y')
+
+    def create_booking_availability_for_account(self, time_from, time_to, increment, duration):
+        monday_from = time_from
+        monday_to = time_to
+        return BookingAvailability.objects.create(
+            account_social=self.social_account,
+            monday_from=monday_from,
+            monday_to=monday_to,
+            availability_increment=increment,
+            booking_duration=duration
+        )
+
+    @patch('bookings.views.EventBookingForm')
+    @patch('bookings.views.set_new_token')
+    def test_book_meeting_slot_get(self, token_patch, booking_form):
+        response = self.client.get(
+            reverse('bookings:book_meeting_slot', args=[self.time, self.date_formatted, '1', '2']))
+        self.assertEqual(response.status_code, 200)
+        booking_form.assert_called_with(date=self.date, booking_availability=self.booking_availability,
+                                        initial={'date_time': self.date.strftime('%A, %-d %B %Y %H:%M')})
+        self.assertContains(response, 'recaptcha')
+
+    @patch('bookings.views.messages')
+    @patch('bookings.views.set_new_token')
+    @patch('bookings.views.EventBookingForm')
+    def test_book_meeting_slot_invalid_form(self, booking_form, token_patch, messages):
+        booking_form().is_valid.return_value = False
+        response = self.client.post(
+            reverse('bookings:book_meeting_slot', args=[self.time, self.date_formatted, '1', '2']),
+            data={})
+        self.assertEqual(response.status_code, 200)
+        messages.warning.assert_called()
+
+    @patch('bookings.views.set_new_token')
+    @patch('bookings.views.EventBookingForm')
+    @patch('bookings.views.validate_recaptcha')
+    @patch('bookings.views.render_to_string')
+    @patch('bookings.views.book_event')
+    @patch('bookings.views.send_mail')
+    def test_book_meeting_slot_invalid_form(self, send_mail, book_event, render_string, captcha, booking_form,
+                                            token_patch):
+        captcha.return_value = True
+        booking_form().is_valid.return_value = True
+        booking_form().save.return_value = Event(
+            first_name='fn',last_name='ln',email='em',duration=10,subject='sub'
+        )
+        render_string.return_value = 'htmlMessage'
+        book_event.return_value = {'id':1}
+        response = self.client.post(
+            reverse('bookings:book_meeting_slot', args=[self.time, self.date_formatted, '1', '2']),
+            data={}, follow=True)
+        send_mail.assert_called_with(subject='New Booking: sub', message='', from_email='imeetingbooker@gmail.com',
+                          recipient_list=['test_email'], html_message='htmlMessage')
+        self.assertRedirects(response,reverse('bookings:booking_confirmed', args=[1]))
+        self.assertEqual(response.status_code, 200)
+    # first_name =last_name = email =duration =subject =
+
 
 class BookingAvailabilityModelTests(TestCase):
 
@@ -144,8 +213,8 @@ class BookingAvailabilityModelTests(TestCase):
         )
         user = User.objects.create(username='test_user', password='test_password', email='test_email')
         social_account = SocialAccount.objects.create(user=user, provider="microsoft", )
-        social_token = SocialToken.objects.create(account_id=1, app_id=1, expires_at=datetime.date(2018, 2,
-                                                                                                   9))  # create token and link to account
+        # create token and link to account
+        social_token = SocialToken.objects.create(account_id=1, app_id=1, expires_at=datetime.date(2018, 2, 9))
         self.booking_obj.account_social = social_account
 
     def test_get_time_ranges(self):
