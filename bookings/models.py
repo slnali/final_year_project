@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.core.validators import validate_email
 import datetime
 
+
 ############### ADD __STR__ REPRESENTATIONS OF OBJECTS FOR MODELS!!
 class BookingAvailability(models.Model):
     # The first element in each tuple is the actual value to be set on the model,
@@ -53,33 +54,34 @@ class BookingAvailability(models.Model):
         # default = 10
     )
 
-    def get_time_slot_data(self, start_date = None):
+    def get_time_slot_data(self, start_date=None):
         '''
         :return: list of dicts from current date e.g. TUE 13/02/18 => 7 days
         '''
-        start_date = start_date or datetime.datetime.today().date() #fix
+        start_date = start_date or datetime.datetime.today().date()  # fix
         days = self.get_next_7_days(start_date)
         min_time, max_time = self.get_time_ranges()
         times = self.get_times_by_increment(min_time, max_time)
-        date_time_data_dict = self.get_day_time_availability_dict(days,times)
+        date_time_data_dict = self.get_day_time_availability_dict(days, times)
         return date_time_data_dict
 
     @staticmethod
-    def get_next_7_days( start_date, format=False ):
+    def get_next_7_days(start_date, format=False):
         return [start_date.strftime('%a %d/%m/%y') if format else start_date] + \
                [(start_date + datetime.timedelta(days=num)).strftime('%a %d/%m/%y')
                 if format else (start_date + datetime.timedelta(days=num)) for num in range(1, 7)]
 
-    def get_time_ranges(self): #getattr ['monday_,tuesday
-        end_times = [self.monday_to, self.tuesday_to,
-                     self.wednesday_to, self.thursday_to,
-                     self.friday_to, self.saturday_to or datetime.time(0, 0),
-                     self.sunday_to or datetime.time(0, 0)]
+    def get_time_ranges(self):  # getattr ['monday_,tuesday
+        filter_none = lambda lst: [elem for elem in lst if elem is not None]
         start_times = [self.monday_from, self.tuesday_from,
                        self.wednesday_from, self.thursday_from,
-                       self.friday_from, self.saturday_from or datetime.time(23, 59),
-                       self.sunday_from or datetime.time(23, 59)]
-        return min(start_times), max(end_times)
+                       self.friday_from, self.saturday_from,
+                       self.sunday_from]
+        end_times = [self.monday_to, self.tuesday_to,
+                     self.wednesday_to, self.thursday_to,
+                     self.friday_to, self.saturday_to,
+                     self.sunday_to]
+        return min(filter_none(start_times)), max(filter_none(end_times))
 
     def get_times_by_increment(self, min_time, max_time):
         '''
@@ -97,22 +99,21 @@ class BookingAvailability(models.Model):
             min_datetime += datetime.timedelta(minutes=self.availability_increment)
         return times
 
-
-    def get_day_time_availability_dict(self, days, times): ##change name for this!!!!
+    def get_day_time_availability_dict(self, days, times):  ##change name for this!!!!
         data = []
-        outlook_events = self.parse_outlook_events_into_dict( self.get_outlook_events( days ) )
+        outlook_events = self.parse_outlook_events_into_dict(self.get_outlook_events(days))
         for time in times:
             dic = {}
             for day in days:
-                if self.slot_is_available(time.time(),day,outlook_events):
+                if self.slot_is_available(time.time(), day, outlook_events):
                     dic[day.strftime('%a %d/%m/%y')] = time.time().strftime('%H:%M')
             data.append(dic)
         return data
 
-    def get_day_availability_dict(self): #store as JSONFIELD?
+    def get_day_availability_dict(self):  # store as JSONFIELD?
         return {
-            'Monday': {'start' : self.monday_from , 'end': self.monday_to},
-            'Tuesday': {'start' : self.tuesday_from , 'end': self.tuesday_to},
+            'Monday': {'start': self.monday_from, 'end': self.monday_to},
+            'Tuesday': {'start': self.tuesday_from, 'end': self.tuesday_to},
             'Wednesday': {'start': self.wednesday_from, 'end': self.wednesday_to},
             'Thursday': {'start': self.thursday_from, 'end': self.thursday_to},
             'Friday': {'start': self.friday_from, 'end': self.friday_to},
@@ -120,7 +121,7 @@ class BookingAvailability(models.Model):
             'Sunday': {'start': self.sunday_from, 'end': self.sunday_to},
         }
 
-    def slot_is_available(self,time,day,outlook_events):
+    def slot_is_available(self, time, day, outlook_events):
         '''
         Checks whether time slot for day is available
         3 main checks
@@ -131,29 +132,27 @@ class BookingAvailability(models.Model):
         :param day: datetime.date object datetime.date(2018,2,10)
         :return: True/False
         '''
-        combined_date_time = datetime.datetime.combine(day,time)
+        combined_date_time = datetime.datetime.combine(day, time)
         if datetime.date.today() == day and datetime.datetime.now() > combined_date_time:
             return False
         if not self.is_slot_within_booking_availability(combined_date_time):
             return False
-        if self.is_slot_within_outlook_event(combined_date_time,outlook_events):
+        if self.is_slot_within_outlook_event(combined_date_time, outlook_events):
             return False
         return True
 
-
-    def is_slot_within_booking_availability(self,datetime_obj): #within datetimes
-        day = datetime_obj.strftime('%A') #string formatting for day of week e.g. monday,tuesday etc.
+    def is_slot_within_booking_availability(self, datetime_obj):  # within datetimes
+        day = datetime_obj.strftime('%A')  # string formatting for day of week e.g. monday,tuesday etc.
         availability_dict = self.get_day_availability_dict()
         day_preferences = availability_dict.get(day)
         if not day_preferences.get('start') or not day_preferences.get('end'):
             return False
-        start_time = datetime.datetime.combine(datetime.date.min,day_preferences['start'])
-        end_time = datetime.datetime.combine(datetime.date.min,day_preferences['end'])
-        current_time = datetime.datetime.combine(datetime.date.min,datetime_obj.time())
+        start_time = datetime.datetime.combine(datetime.date.min, day_preferences['start'])
+        end_time = datetime.datetime.combine(datetime.date.min, day_preferences['end'])
+        current_time = datetime.datetime.combine(datetime.date.min, datetime_obj.time())
         return True if start_time <= current_time < end_time else False
 
-
-    def get_outlook_events(self,dates,as_timzone=False):
+    def get_outlook_events(self, dates, as_timzone=False):
         token = self.account_social.socialtoken_set.get()
         if token.expires_at < timezone.now():
             set_new_token(token)
@@ -162,32 +161,32 @@ class BookingAvailability(models.Model):
                                                   start_date=dates[0].isoformat() if not as_timzone else
                                                   dates[0].astimezone().isoformat(),
                                                   end_date=dates[-1].isoformat() if not as_timzone else
-                                                  dates[-1].astimezone().isoformat(),)
+                                                  dates[-1].astimezone().isoformat(), )
         return outlook_events
 
-    def parse_outlook_events_into_dict(self,outlook_output):
+    def parse_outlook_events_into_dict(self, outlook_output):
         events = outlook_output.get('value')
         event_lst = []
-        if events: #ELSE STATEMENT E.G. EMPTY WEEK
+        if events:  # ELSE STATEMENT E.G. EMPTY WEEK
             for event in events:
                 event_lst.append({
-                            'start': dateutil.parser.parse(event.get('start').get('dateTime')),
-                            'end': dateutil.parser.parse(event.get('end').get('dateTime')),
-                            'is_all_day': event.get('isAllDay')})
+                    'start': dateutil.parser.parse(event.get('start').get('dateTime')),
+                    'end': dateutil.parser.parse(event.get('end').get('dateTime')),
+                    'is_all_day': event.get('isAllDay')})
         return event_lst
 
     def is_slot_within_outlook_event(self, datetime_obj, events):
-        #TODO ACCOUNT FOR CASE 10:20 20 minute bookings is available when 10:30 is booked, need to add logic here
-        #events has list of dicts ALGORITHM CAN BE IMPROVED,
+        # TODO ACCOUNT FOR CASE 10:20 20 minute bookings is available when 10:30 is booked, need to add logic here
+        # events has list of dicts ALGORITHM CAN BE IMPROVED,
         if events:
             for event in events:
-                if event['is_all_day'] and event['start'].date() == datetime_obj.date(): #if event is allday
+                if event['is_all_day'] and event['start'].date() == datetime_obj.date():  # if event is allday
                     return True
                 if event['start'] <= datetime_obj < event['end']:
-                    #if slot is within event duration
+                    # if slot is within event duration
                     return True
-                if event['start'] <= datetime_obj + datetime.timedelta(minutes=self.availability_increment) \
-                        <= event['end']: #if at least one meeting slot is possible remain available
+                if event['start'] < datetime_obj + datetime.timedelta(minutes=self.availability_increment) \
+                        < event['end']:  # if at least one meeting slot is possible remain available
                     return True
         return False
 
@@ -199,29 +198,21 @@ class BookingAvailability(models.Model):
             value += self.availability_increment
         return durations
 
-#re add later
+
+# re add later
 def custom_validate_kcl_email(email):
     if 'kcl' not in email:
         raise ValidationError('Email must be @kcl email address')
 
+
 class Event(models.Model):
-    social_account = models.ForeignKey(SocialAccount,related_name='events')
+    social_account = models.ForeignKey(SocialAccount, related_name='events')
     date_time = models.CharField(max_length=200)
     start_time = models.DateTimeField(blank=True)
     end_time = models.DateTimeField(blank=True)
-    first_name = models.CharField(max_length=200,blank=False)#change names
-    last_name = models.CharField(max_length=200, blank=True)#change names
-    email = models.EmailField(max_length=200,blank=False,validators=[validate_email])
+    first_name = models.CharField(max_length=200, blank=False)  # change names
+    last_name = models.CharField(max_length=200, blank=True)  # change names
+    email = models.EmailField(max_length=200, blank=False, validators=[validate_email])
     duration = models.IntegerField(choices=())
     subject = models.CharField(max_length=500, blank=True)
     outlook_id = models.CharField(max_length=1000, blank=True, null=True)
-
-
-
-
-
-
-
-
-
-
