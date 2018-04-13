@@ -72,48 +72,37 @@ class EventBookingForm(forms.ModelForm):
         super(EventBookingForm, self).__init__(*args, **kwargs)
         choices = self.get_duration_choices()
         self.fields['duration'] = forms.TypedChoiceField(choices=choices)
+        #if duration choices empty alert error that slot has been booked recently
 
-    '''[{'start': datetime.datetime(2018, 2, 21, 12, 0), 'end': datetime.datetime(2018, 2, 21, 12, 15), 'is_all_day': False}, {'start': datetime.datetime(2018, 2, 21, 12, 30), 'end': datetime.datetime(2018, 2, 21, 13, 0), 'is_all_day': False}]
-     test case for retrieving events booked in between slots'''
-
+    #edge case meeting booked recently raise errorand EVENT UPDATE FOOOOOK
     def get_duration_choices(self):
         default_choices = self.booking_availability.get_range_of_durations()
-        # from now till midnight of current day| should be now and max booking duration if not events return tuplify
-        # add one minute to avoid collision with currently ending event
-        start_time = self.booking_date + datetime.timedelta(minutes=1)
-        last_possible_time = self.booking_date + datetime.timedelta(minutes=self.booking_availability.booking_duration)
-        outlook_events_within_booking_duration = self.booking_availability.parse_outlook_events_into_dict(
-            self.booking_availability.get_outlook_events([start_time, last_possible_time], as_timzone=True))
-        possible_durations = self.get_choices_within_event_range(default_choices,
-                                                                 outlook_events_within_booking_duration)
-        possible_durations = self.tuplify_choices(possible_durations)
-        return possible_durations
+        time_slots = self.booking_availability.get_time_slot_data(start_date=self.booking_date.date(), format=False)
+        free_slots = [slot.get(self.booking_date.date()) for slot in time_slots if self.booking_date.date() in slot]
+        event_start = self.existing_event.start_time.astimezone().replace(tzinfo=None) if self.existing_event else None
+        event_end = self.existing_event.end_time.astimezone().replace(tzinfo=None) if self.existing_event else None
+        choices = self.get_choices_within_event_range(default_choices, free_slots, event_start, event_end)
+        return choices
 
-    def tuplify_choices(self, durations):
-        return tuple([(duration, duration) for duration in durations])
-
-    # FIX CASE 9:20 - 9:40 BOOKED 1 MEETING, 9:00 - 9:20 BOOKED ANOTHER MEETING THEN UPDATED TO 8:40 CHOICES LIMIT TO 40 MIN WHEREAS NOW WOULD BE 60 MINUTES...
-    # SO 2 EVENTS
-    def get_choices_within_event_range(self, choices, events):
+    def get_choices_within_event_range(self, default_choices, free_slots, event_start=None, event_end=None):
         possible_choices = []
-        date_end_time = self.booking_availability.get_day_availability_dict().get(self.booking_date.strftime('%A'))[
-            'end']
-        date_end_date = self.booking_date.replace(hour=date_end_time.hour, minute=date_end_time.minute)
-        for choice in choices:
-            if events:  # multi tenancy someone booked same slot at moment
-                event = events[0]  # min of one event disrupts booking, we dont care if 2 events disrupt
-                if self.booking_date + datetime.timedelta(minutes=choice) <= event['start'] or \
-                        (self.existing_event.start_time.astimezone().replace(tzinfo=None) == event[
-                            'start'] if self.existing_event else False):
-                    if self.booking_date + datetime.timedelta(
-                            minutes=choice) <= date_end_date:  # MIGHT NOT NEED THIS BIT
-                        possible_choices.append(choice)
-            else:
-                if self.booking_date + datetime.timedelta(
-                        minutes=choice) <= date_end_date:  # availabilty dict mon,tue,wed
+        event_not_clashed = True
+        override_existing_event = False
+        for choice in default_choices:
+            if event_start and not override_existing_event and event_start.date() == self.booking_date.date():
+                if event_start < self.booking_date + datetime.timedelta(minutes=choice) <= event_end:
                     possible_choices.append(choice)
-        return possible_choices
-
+                    continue
+                elif self.booking_date + datetime.timedelta(minutes=choice) > event_end and possible_choices:
+                    override_existing_event = True
+            if (self.booking_date + datetime.timedelta(minutes=choice)).time() in free_slots and event_not_clashed:
+                possible_choices.append(choice)
+            elif event_not_clashed and not override_existing_event:
+                possible_choices.append(choice)
+                event_not_clashed = False
+            else:
+                break
+        return self.tuplify_choices(possible_choices)
 
 class UpdateEventBookingForm(EventBookingForm):
     # or can have a if condition on init pass through kwargs

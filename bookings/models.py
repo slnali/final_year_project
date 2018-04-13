@@ -56,7 +56,7 @@ class BookingAvailability(models.Model):
         # default = 10
     )
 
-    def get_time_slot_data(self, start_date=None):
+    def get_time_slot_data(self, start_date=None, format=True):
         '''
         :return: list of dicts from current date e.g. TUE 13/02/18 => 7 days
         '''
@@ -64,7 +64,7 @@ class BookingAvailability(models.Model):
         days = self.get_next_7_days(start_date)
         min_time, max_time = self.get_time_ranges()
         times = self.get_times_by_increment(min_time, max_time)
-        date_time_data_dict = self.get_day_time_availability_dict(days, times)
+        date_time_data_dict = self.get_day_time_availability_dict(days, times, format)
         return date_time_data_dict
 
     @staticmethod
@@ -102,14 +102,15 @@ class BookingAvailability(models.Model):
             min_datetime += datetime.timedelta(minutes=self.availability_increment)
         return times
 
-    def get_day_time_availability_dict(self, days, times):  ##change name for this!!!!
+    def get_day_time_availability_dict(self, days, times, format=True):  ##change name for this!!!!
         data = []
         outlook_events = self.parse_outlook_events_into_dict(self.get_outlook_events(days))
         for time in times:
             dic = {}
             for day in days:
                 if self.slot_is_available(time.time(), day, outlook_events):
-                    dic[day.strftime('%a %d/%m/%y')] = time.time().strftime('%H:%M')
+                    dic[day.strftime('%a %d/%m/%y') if format else day] = time.time().strftime('%H:%M') if format else\
+                        time.time()
             data.append(dic)
         return data
 
