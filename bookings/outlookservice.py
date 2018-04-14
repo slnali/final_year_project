@@ -144,6 +144,15 @@ def cancel_booking(access_token, user_email, event_id):
 
 
 def book_event(access_token, user_email, event, body_content):
+    '''
+    Books a meeting/event for a specified start and end time
+    email is auto sent through outlook client to notify
+    :param access_token:
+    :param user_email:
+    :param event:
+    :param body_content:
+    :return:
+    '''
     event_endpoint = graph_endpoint.format('/me/events')
 
     payload = {

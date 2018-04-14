@@ -10,11 +10,7 @@ from django.core.validators import validate_email
 import datetime
 
 
-############### ADD __STR__ REPRESENTATIONS OF OBJECTS FOR MODELS!!
 class BookingAvailability(models.Model):
-    # The first element in each tuple is the actual value to be set on the model,
-    # and the second element is the human-readable name
-    # Show availability in increments of?
     AVAILABILITY_INCREMENTS = (
         (5, 5),
         (10, 10),
@@ -25,9 +21,6 @@ class BookingAvailability(models.Model):
         (45, 45),
         (60, 60),
     )
-    # add default values for weeekdays sames as YCBM
-    # SHOULD BE WHOLE NUMBERS 8:00, 8:10,dont allow 8:02
-    # BOTH From and To need to have values for it to be saved! otherwise None
     account_social = models.OneToOneField(SocialAccount, related_name='availability_prefs', blank=True, null=True)
     monday_from = models.TimeField(blank=True, null=True)
     monday_to = models.TimeField(blank=True, null=True)
@@ -51,14 +44,13 @@ class BookingAvailability(models.Model):
     )
     booking_duration = models.IntegerField(
         choices=(),
-        # default = 10
     )
+
 
     def get_time_slot_data(self, start_date=None, format=True):
         '''
         :return: list of dicts from current date e.g. TUE 13/02/18 => 7 days
         '''
-        start_date = start_date or datetime.datetime.today().date()  # fix
         days = self.get_next_7_days(start_date)
         min_time, max_time = self.get_time_ranges()
         times = self.get_times_by_increment(min_time, max_time)
@@ -67,11 +59,21 @@ class BookingAvailability(models.Model):
 
     @staticmethod
     def get_next_7_days(start_date, format=False):
+        '''
+        Get next 7 days of datetime objects starting from current day
+        :param start_date: starting date
+        :param format: format date in form e.g. Tue 06/01/2018
+        :return: list of datetime objects
+        '''
         return [start_date.strftime('%a %d/%m/%y') if format else start_date] + \
                [(start_date + datetime.timedelta(days=num)).strftime('%a %d/%m/%y')
                 if format else (start_date + datetime.timedelta(days=num)) for num in range(1, 8)]
 
-    def get_time_ranges(self):  # getattr ['monday_,tuesday
+    def get_time_ranges(self):
+        '''
+        Get minimum from time and maximum to time
+        :return: tuple(min time, max time)
+        '''
         filter_none = lambda lst: [elem for elem in lst if elem is not None]
         default_start, default_end = [datetime.time(23, 59)], [datetime.time(0, 0)]
         start_times = [self.monday_from, self.tuesday_from,
@@ -100,7 +102,14 @@ class BookingAvailability(models.Model):
             min_datetime += datetime.timedelta(minutes=self.availability_increment)
         return times
 
-    def get_day_time_availability_dict(self, days, times, format=True):  ##change name for this!!!!
+    def get_day_time_availability_dict(self, days, times, format=True):
+        '''
+        Get day time dictionary according to availability of time slots
+        :param days: list of date objects for range of dates
+        :param times: list of datetime objects for range of times
+        :param format: format date objects as Fri 16/02/18 and time objects as 08:00
+        :return:  list of dicts of day and time [{'Fri 16/02/18': 08:00, 'Thu 16/02/18': 08:00, },{}...]
+        '''
         data = []
         outlook_events = self.parse_outlook_events_into_dict(self.get_outlook_events(days))
         short_breaks = self.get_breaks_between_close_sets_of_events(days, outlook_events)
@@ -116,11 +125,11 @@ class BookingAvailability(models.Model):
     def get_breaks_between_close_sets_of_events(self, days, events):
         '''
         	9:30 – 10 10 – 10:15 10:30 – 10:45 (15) seq = 3   3+ 15 minutes or or less
-        find cumulative difference between meetings if greater than 15 and 3 or more meetings then don't worry otherwise
-        :return:
+        Find cumulative difference between meetings if greater than 15 and 3 or more meetings
+        don't worry otherwise
+        :return: list of datetime object slots that are possible for breaktimes
         '''
         break_slots = []
-        # { 'datetime()' : [{start, end} {start, end}], '']
         day_events_dict = self.get_day_events_dict(events)
         for day in days:
             if day_events_dict.get(day):
@@ -148,6 +157,11 @@ class BookingAvailability(models.Model):
 
 
     def get_day_events_dict(self, events):
+        '''
+        Get events that occur each day (datetime object)
+        :param events: outlook events (dict of start time, end time)
+        :return: { 'datetime()' : [{start, end} {start, end}], '']
+        '''
         dic = {}
         for event in events:
             if dic.get(event['start'].date()):
@@ -156,7 +170,11 @@ class BookingAvailability(models.Model):
                 dic[event['start'].date()] = [event]
         return dic
 
-    def get_day_availability_dict(self):  # store as JSONFIELD?
+    def get_day_availability_dict(self):
+        '''
+        Return a dictionary representation of key model fields
+        :return: dict
+        '''
         return {
             'Monday': {'start': self.monday_from, 'end': self.monday_to},
             'Tuesday': {'start': self.tuesday_from, 'end': self.tuesday_to},
@@ -171,14 +189,15 @@ class BookingAvailability(models.Model):
     def slot_is_available(self, time, day, outlook_events, short_break_slots=[]):
         '''
         Checks whether time slot for day is available
-        3 main checks
+        5 main checks
+        1)Current slot is stated as a break slot
         1)Current time is after slot? Not availablle
         2)Checks Mon-Sun availabilities on booking availability model instance
         3)Checks whether in lunch break
         4)Interfaces with outlook calendar json response to check availability with reference to existing booked events
         :param time: datetime.time object e.g. datetime.time(8,0) 8:00AM
         :param day: datetime.date object datetime.date(2018,2,10)
-        :return: True/False
+        :return: True/False (True => Slot is available for booking) otherwise False
         '''
         combined_date_time = datetime.datetime.combine(day, time)
         if combined_date_time in short_break_slots:
@@ -194,10 +213,22 @@ class BookingAvailability(models.Model):
         return True
 
     def get_combined_start_end_and_current_datetime(self, start, end, current):
+        '''
+        Return combined date and time object
+        :param start: start time
+        :param end: end time
+        :param current: current time
+        :return: tuple of datetime objects tuple => (start,end,current)
+        '''
         combine = lambda time: datetime.datetime.combine(datetime.date.min, time)
         return combine(start), combine(end), combine(current)
 
     def is_slot_within_lunch_break(self, datetime_obj):
+        '''
+        Check whether slot is in a lunch break
+        :param datetime_obj: datetime object
+        :return:True if slot is in lunch break (Unbookable) otherwise False
+        '''
         lunch_prefs = self.get_day_availability_dict().get('Lunch')
         if not lunch_prefs.get('start') or not lunch_prefs.get('end'):
             return False
@@ -206,8 +237,13 @@ class BookingAvailability(models.Model):
         )
         return True if start_time <= current_time < end_time else False
 
-    def is_slot_within_booking_availability(self, datetime_obj):  # within datetimes
-        day = datetime_obj.strftime('%A')  # string formatting for day of week e.g. monday,tuesday etc.
+    def is_slot_within_booking_availability(self, datetime_obj):
+        '''
+        Check is slot is within current dates booking availability constraint
+        :param datetime_obj:
+        :return: True if slot is within booking availability (Bookable) otherwise False
+        '''
+        day = datetime_obj.strftime('%A')
         availability_dict = self.get_day_availability_dict()
         day_preferences = availability_dict.get(day)
         if not day_preferences.get('start') or not day_preferences.get('end'):
@@ -217,22 +253,33 @@ class BookingAvailability(models.Model):
         )
         return True if start_time <= current_time < end_time else False
 
-    def get_outlook_events(self, dates, as_timezone=False):
+    def get_outlook_events(self, dates):
+        '''
+        Retrieve outlook events between a range of dates
+        :param dates: list of datetimeobjects [start date,end date]
+        :param as_timezone:
+        :return:
+        '''
         token = self.account_social.socialtoken_set.get()
         if token.expires_at < timezone.now():
             set_new_token(token)
         email = self.account_social.user.email
-        outlook_events = get_events_between_dates(access_token=token, user_email=email,
-                                                  start_date=dates[0].isoformat() if not as_timezone else
-                                                  dates[0].astimezone().isoformat(),
-                                                  end_date=dates[-1].isoformat() if not as_timezone else
-                                                  dates[-1].astimezone().isoformat(), )
+        outlook_events = get_events_between_dates(
+            access_token=token,
+            user_email=email,
+            start_date=dates[0].isoformat(),
+            end_date=dates[-1].isoformat())
         return outlook_events
 
     def parse_outlook_events_into_dict(self, outlook_output):
+        '''
+        Parse JSON outlook service response event info into a usable data structure
+        :param outlook_output: output JSON from service
+        :return: list of dictionaries for each event [{start:'',end:'',is_all_day:True},{},{},...]
+        '''
         events = outlook_output.get('value')
         event_lst = []
-        if events:  # ELSE STATEMENT E.G. EMPTY WEEK
+        if events:
             for event in events:
                 event_lst.append({
                     'start': dateutil.parser.parse(event.get('start').get('dateTime')),
@@ -241,21 +288,31 @@ class BookingAvailability(models.Model):
         return event_lst
 
     def is_slot_within_outlook_event(self, datetime_obj, events):
-        # TODO ACCOUNT FOR CASE 10:20 20 minute bookings is available when 10:30 is booked, need to add logic here
-        # events has list of dicts ALGORITHM CAN BE IMPROVED,
+        '''
+        Identifies outlook availability
+        1)if event is allday
+        2)if slot is within event duration
+        3)if at least one meeting slot is possible remain available
+        :param datetime_obj:
+        :param events:
+        :return: True if slot is clashing with outlook event (Unbookable) else False
+        '''
         if events:
             for event in events:
-                if event['is_all_day'] and event['start'].date() == datetime_obj.date():  # if event is allday
+                if event['is_all_day'] and event['start'].date() == datetime_obj.date():
                     return True
                 if event['start'] <= datetime_obj < event['end']:
-                    # if slot is within event duration
                     return True
                 if event['start'] < datetime_obj + datetime.timedelta(minutes=self.availability_increment) \
-                        < event['end']:  # if at least one meeting slot is possible remain available
+                        < event['end']:
                     return True
         return False
 
     def get_range_of_durations(self):
+        '''
+        Get range of durations according to availability incremnent
+        :return: list of integers (durations)
+        '''
         durations = []
         value = self.availability_increment
         while value <= self.booking_duration:
@@ -266,6 +323,11 @@ class BookingAvailability(models.Model):
 
 # re add later
 def custom_validate_kcl_email(email):
+    '''
+    Filter to ensure only kcl email addresses can be input
+    :param email: email address
+    :return: Validation error if 'kcl' not in email else None
+    '''
     if 'kcl' not in email:
         raise ValidationError('Email must be @kcl email address')
 
