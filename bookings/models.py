@@ -124,7 +124,7 @@ class BookingAvailability(models.Model):
 
     def get_breaks_between_close_sets_of_events(self, days, events):
         '''
-        	9:30 – 10 10 – 10:15 10:30 – 10:45 (15) seq = 3   3+ 15 minutes or or less
+        e.g. 9:30 – 10 10 – 10:15 10:30 – 10:45 (15) seq = 3   3+ 15 minutes or or less
         Find cumulative difference between meetings if greater than 15 and 3 or more meetings
         don't worry otherwise
         :return: list of datetime object slots that are possible for breaktimes
@@ -304,7 +304,7 @@ class BookingAvailability(models.Model):
                 if event['start'] <= datetime_obj < event['end']:
                     return True
                 if event['start'] < datetime_obj + datetime.timedelta(minutes=self.availability_increment) \
-                        < event['end']:
+                        <= event['end']:
                     return True
         return False
 

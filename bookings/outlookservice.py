@@ -68,12 +68,19 @@ def get_me(access_token):
 
 
 def get_my_events(access_token, user_email):
-    get_events_url = graph_endpoint.format('/me/events')
-
+    '''
+    Get outlook events
     # Use OData query parameters to control the results
     #  - Only first 10 results returned
     #  - Only return the Subject, Start, and End fields
     #  - Sort the results by the Start field in ascending order
+    :param access_token:
+    :param user_email:
+    :return: dict containing events
+    '''
+    get_events_url = graph_endpoint.format('/me/events')
+
+
     query_parameters = {'$top': '10',
                         '$select': 'subject,start,end',
                         '$orderby': 'start/dateTime ASC'}
@@ -88,12 +95,12 @@ def get_my_events(access_token, user_email):
 
 def get_events_between_dates(access_token, user_email, start_date, end_date):
     '''
-
+    Get outlook events between a start and end date
     :param access_token:
     :param user_email:
     :param start_date: iso format start date
     :param end_date: iso format end date
-    :return:
+    :return: dictionary containing value key which maps to list of dicts for each event
     '''
     get_events_url = graph_endpoint.format('/me/calendarview')
 
@@ -109,6 +116,14 @@ def get_events_between_dates(access_token, user_email, start_date, end_date):
 
 
 def update_booking(access_token,user_email,event,body_content):
+    '''
+    Update existing outlook event time
+    :param access_token:
+    :param user_email:
+    :param event: dict containing subject, start and end time
+    :param body_content: HTML content for update email auto sent by user
+    :return: dict response containing saved event data or string if errored
+    '''
     event_endpoint = graph_endpoint.format('/me/events/{}'.format(event['outlook_id']))
     payload = {
         "subject": event['subject'],
@@ -133,6 +148,13 @@ def update_booking(access_token,user_email,event,body_content):
 
 
 def cancel_booking(access_token, user_email, event_id):
+    '''
+    Cancel existing event
+    :param access_token:
+    :param user_email:
+    :param event_id: outlook id of users event
+    :return: True if event was successfully cancelled else False
+    '''
     event_endpoint = graph_endpoint.format('/me/events/{}'.format(event_id))
     r = make_api_call('DELETE', event_endpoint, access_token, user_email)
     #check that the request has been processed but no content has been responded (204)
@@ -149,8 +171,8 @@ def book_event(access_token, user_email, event, body_content):
     email is auto sent through outlook client to notify
     :param access_token:
     :param user_email:
-    :param event:
-    :param body_content:
+    :param event: event dict containing event info
+    :param body_content: HTML content to be sent in email auto sent to booker by user
     :return:
     '''
     event_endpoint = graph_endpoint.format('/me/events')

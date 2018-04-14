@@ -5,7 +5,7 @@ import datetime
 from django.utils import timezone
 from meeting_scheduler.secret_settings import CLIENT_SECRET
 
-REDIRECT_URL = 'http://127.0.0.1:8000/accounts/microsoft/login/callback/'
+REDIRECT_URL = 'http://127.0.0.1:8000/accounts/microsoft/login/callback/' #get server host
 
 # Client ID and secret
 client_id = 'c82fc9db-5118-4581-91ed-b3c586820b72'
@@ -65,10 +65,10 @@ def get_token_from_code(auth_code, redirect_uri):
 
 def get_token_from_refresh_token(refresh_token, redirect_uri):
     '''
-    refresh the access token
+    Query graph endpoint to refresh token
     :param refresh_token: 
-    :param redirect_uri: 
-    :return: 
+    :param redirect_uri: usually a callback url
+    :return: dict containing access token
     '''
     # Build the post form for the token request
     post_data = {'grant_type': 'refresh_token',
@@ -91,6 +91,11 @@ def get_token_from_refresh_token(refresh_token, redirect_uri):
 
 
 def set_new_token(token_obj):
+    '''
+    Refresh access token through refresh token
+    :param token_obj:
+    :return: Void
+    '''
     refresh_token = token_obj.token_secret
     response = get_token_from_refresh_token(refresh_token, REDIRECT_URL)  # hardcoded...
     # set newly obtained tokens for token object and save

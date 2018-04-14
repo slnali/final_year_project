@@ -56,6 +56,11 @@ def gettoken(request):
 
 
 def events(request):
+    """
+    Display outlook events ofr current week
+    :param request:
+    :return: events view
+    """
     token_obj = SocialToken.objects.filter(account__user__id=request.user.pk, account__provider='microsoft')[0]
     user_email = request.user.email
     # Check if token has expired
@@ -68,6 +73,12 @@ def events(request):
     return render(request, 'bookings/events.html', context)
 
 def set_account_availability(request):
+    """
+    Set accounts booking preferences details
+    :param request:
+    :return: Blank form on GET (no saved), Filled Form on GET (saved),
+    POST redirects to existing view GET once prefs saved
+    """
     account = SocialAccount.objects.filter(user__id=request.user.pk, provider='microsoft')[0]
     booking_availability = BookingAvailability.objects.filter(account_social__id=account.pk)
     if request.method == 'POST':
@@ -82,9 +93,6 @@ def set_account_availability(request):
                 availability = form.save(commit=False)
                 availability.account_social = account
                 availability.save()
-            # availability = form.save(commit=False)
-            # availability.account = account
-            # availability.save()
         return HttpResponseRedirect(reverse('bookings:set_account_availability'))  # redirect to same page
     else:
         # GET request
@@ -99,7 +107,11 @@ def set_account_availability(request):
 
 
 def validate_recaptcha(request):
-    '''reCAPTCHA validation '''
+    """
+    Sends request input to recaptcha endpoint for validation through reCAPTCHA field
+    :param request:
+    :return: True if validated successfully else False
+    """
     recaptcha_response = request.POST.get('g-recaptcha-response')
     data = {
         'secret': settings.GOOGLE_RECAPTCHA_SECRET_KEY,
@@ -110,11 +122,21 @@ def validate_recaptcha(request):
     if result.get('success'):
         return True
     else:
-        messages.error(request, 'Invalid reCAPTCHA. Please try again.')
+        messages.error(request, 'reCAPTCHA validation failed. Please try again.')
         return False
 
 
 def book_meeting_slot(request, slot, date, pk, event_pk):
+    """
+    View booking form and Book selected event slot
+    :param request:
+    :param slot: time
+    :param date: date
+    :param pk: user pk/id
+    :param event_pk: event pk/id
+    :return:Booking confirmation screen on success, error message below form on error,
+    Booking Form on GET req
+    """
     account = SocialAccount.objects.filter(user__id=int(pk))[0]
     token_obj = account.socialtoken_set.get()
     if token_obj.expires_at < timezone.now():
@@ -161,6 +183,17 @@ def book_meeting_slot(request, slot, date, pk, event_pk):
 
 '''REFACTOR THIS NAME!!!!'''
 def update_meeting_slot(request, slot, date, pk, event_pk):
+    """
+    Display Update Booking form for updating event, then continue to reschedule confirmation screen
+    :param request:
+    :param slot: time
+    :param date:
+    :param pk:
+    :param event_pk:
+    :return:
+    GET Update booking form once slot chosen,
+    POST continue to reschedule confirmation
+    """
     account = SocialAccount.objects.filter(user__id=int(pk))[0]
     event = Event.objects.filter(pk=int(event_pk))[0]
     booking_availability = BookingAvailability.objects.filter(account_social__id=account.pk)[0]
@@ -179,6 +212,16 @@ def update_meeting_slot(request, slot, date, pk, event_pk):
 
 
 def confirm_slot_reschedule(request, slot, date, event_pk, duration):
+    """
+    Confirm reschedule of event slot by updating existing event object
+    once outlook event has been rescheduled successfully (POST)
+    :param request:
+    :param slot:
+    :param date:
+    :param event_pk:
+    :param duration: duration of updated event
+    :return: Booking confirmation screen if updated on outlook
+    """
     event = Event.objects.filter(pk=int(event_pk))[0]
     social_account = event.social_account
     token_obj = social_account.socialtoken_set.get()
@@ -208,6 +251,12 @@ def confirm_slot_reschedule(request, slot, date, event_pk, duration):
 
 
 def cancel_booking_slot(request, event_pk):
+    """
+    Cancel event slot
+    :param request:
+    :param event_pk: event id to be cancelled
+    :return: GET cancel booking confirmation screen, POST event cancelled screen
+    """
     event = Event.objects.filter(pk=int(event_pk))[0]  # catch event already cancelled error
     if request.method == 'GET':
         return render(request, 'bookings/cancel_booking.html', {'event': event})
@@ -228,11 +277,21 @@ def cancel_booking_slot(request, event_pk):
 
 
 class BookingConfirmedView(DetailView):
+    """
+    Class based view for displaying booking confirmed screen
+    renders named template and passes Event model context
+    """
     model = Event
     template_name = 'bookings/booking_confirmed.html'
 
 
 def load_booking_durations(request):
+    """
+    Respond to AJAX request from availabiltiy increment change
+    Gets durations for AJAX request and responds
+    :param request:
+    :return:
+    """
     availability_increment = request.GET.get('availability_increment')
     booking_durations = get_booking_duration_choices(int(availability_increment))
     return render(request, 'bookings/booking_duration_dropdown_list_options.html',
@@ -240,7 +299,12 @@ def load_booking_durations(request):
 
 
 def get_booking_duration_choices(increment):
-    '''Can be selected up to a specific time'''
+    """
+    Get duration choices that are mutliple of
+    availability increment
+    :param increment:
+    :return: tuple of tuples for each duration e.g. ((10,10), (20,20), ...)
+    """
     lst = []
     value = increment
     for num in range(12):
@@ -250,6 +314,16 @@ def get_booking_duration_choices(increment):
 
 
 def display_available_time_slots(request, name, pk, date=None, action=None, event_pk=0):
+    """
+    Display booking grid with bookable time slots
+    :param request:
+    :param name: user name
+    :param pk:
+    :param date:
+    :param action: 'next' to get next weeks events otherwise previous week
+    :param event_pk:
+    :return: GET specified weeks events according to booking availability
+    """
     '''TODO IF EVENT DOESNT EXIST DISPLAY MESSAGE EVENT HAS BEEN CANCELLED AND CANNOT BE UPDATED'''
     account = SocialAccount.objects.filter(user__id=int(pk))[0]  # change to pk in url!!!!!! e.g. random user
     booking_availabilty_preferences = BookingAvailability.objects.filter(account_social__id=account.pk)[0]

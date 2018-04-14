@@ -1,14 +1,10 @@
 import django_tables2 as tables
 from django_tables2 import A, columns
-# var = 'current_day_plus_{}'
-# i = 0
-# for day in days:
-#     locals().update({var.format(i): tables.LinkColumn(accessor=days[i], verbose_name=days[i],
-#                                                       viewname='bookings:book_meeting_slot',
-#                                                       args=[A(days[i]), days[i]])})
-#     i += 1
 
 class BookingGrid(tables.Table):
+    '''
+    Slot booking widget
+    '''
     current_day_plus_0 = tables.LinkColumn()
     current_day_plus_1 = tables.LinkColumn()
     current_day_plus_2 = tables.LinkColumn()
