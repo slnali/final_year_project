@@ -353,17 +353,42 @@ class BookingAvailabilityModelTests(TestCase):
                           'is_all_day': False}]
         self.assertEqual(self.booking_obj.slot_is_available(past_time, past_date, outlook_events=outlook_event), True)
 
+    @freeze_time("2018-02-4 10:21:34")
+    def test_slot_is_available_in_short_break_slot(self):
+        past_time = datetime.time(10, 15)
+        past_date = datetime.date(2018, 2, 6)
+        short_break_slots = [datetime.datetime(2018, 2, 6, 10, 15)]
+        outlook_event = []
+        self.assertEqual(
+            self.booking_obj.slot_is_available(past_time, past_date, outlook_event, short_break_slots), False
+        )
 
-'''
+    @freeze_time("2018-02-4 10:21:34")
+    def test_get_breaks_between_close_sets_of_meetings(self):
+        '''response from outlook gives us data sorted by date and time'''
+        outlook_events = [{'start': datetime.datetime(2018, 2, 6, 9, 30), 'end': datetime.datetime(2018, 2, 6, 10, 0),
+                          'is_all_day': False},
+                         {'start': datetime.datetime(2018, 2, 6, 10, 0), 'end': datetime.datetime(2018, 2, 6, 10, 15),
+                          'is_all_day': False},
+                         {'start': datetime.datetime(2018, 2, 6, 10, 30), 'end': datetime.datetime(2018, 2, 6, 10, 45),
+                          'is_all_day': False}
+                         ]
+        '''cluster each day into dict of lists for each list of lists we find breaks'''
+        output = [datetime.datetime(2018, 2, 6, 10, 15)]
+        self.assertEqual(self.booking_obj.get_breaks_between_close_sets_of_events(self.booking_obj.get_next_7_days(datetime.date.today()),outlook_events), output)
 
-empty
-{'@odata.context': "https://graph.microsoft.com/v1.0/$metadata#users('7038aa2b-a83a-4fa3-9311-2664762efa74')/calendarView", 'value': []}
-
-1 event 
-{'@odata.context': "https://graph.microsoft.com/v1.0/$metadata#users('7038aa2b-a83a-4fa3-9311-2664762efa74')/calendarView", 'value': [{'@odata.etag': 'W/"7aT8fM//o0qUPm978Q+uhgADO7q/dw=="', 'id': 'AAMkAGZmMjI1Njg5LTU4Y2QtNDk5ZS1iZWRhLWM1YWJmNmVhNTNhOABGAAAAAAB2selteOuqT4LvathzWRFyBwDtpPx8z-_jSpQ_b3vxD66GAAAAAAENAADtpPx8z-_jSpQ_b3vxD66GAAM7ch3dAAA=', 'createdDateTime': '2018-02-15T00:47:04.6107372Z', 'lastModifiedDateTime': '2018-02-15T00:47:19.2052453Z', 'changeKey': '7aT8fM//o0qUPm978Q+uhgADO7q/dw==', 'categories': [], 'originalStartTimeZone': 'GMT Standard Time', 'originalEndTimeZone': 'GMT Standard Time', 'iCalUId': '040000008200E00074C5B7101A82E00800000000A669AC7FF6A5D301000000000000000010000000C7013EC7F8635143B9DFF8401FC5D8FE', 'reminderMinutesBeforeStart': 15, 'isReminderOn': True, 'hasAttachments': False, 'subject': 'something', 'bodyPreview': '', 'importance': 'normal', 'sensitivity': 'normal', 'isAllDay': False, 'isCancelled': False, 'isOrganizer': True, 'responseRequested': True, 'seriesMasterId': None, 'showAs': 'busy', 'type': 'singleInstance', 'webLink': 'https://outlook.office365.com/owa/?itemid=AAMkAGZmMjI1Njg5LTU4Y2QtNDk5ZS1iZWRhLWM1YWJmNmVhNTNhOABGAAAAAAB2selteOuqT4LvathzWRFyBwDtpPx8z%2F%2BjSpQ%2Bb3vxD66GAAAAAAENAADtpPx8z%2F%2BjSpQ%2Bb3vxD66GAAM7ch3dAAA%3D&exvsurl=1&path=/calendar/item', 'onlineMeetingUrl': None, 'responseStatus': {'response': 'organizer', 'time': '0001-01-01T00:00:00Z'}, 'body': {'contentType': 'html', 'content': '<html>\r\n<head>\r\n<meta http-equiv="Content-Type" content="text/html; charset=utf-8">\r\n<meta content="text/html; charset=us-ascii">\r\n<style type="text/meeting_scheduler" style="display:none">\r\n<!--\r\np\r\n\t{margin-top:0;\r\n\tmargin-bottom:0}\r\n-->\r\n</style>\r\n</head>\r\n<body dir="ltr">\r\n<div id="divtagdefaultwrapper" dir="ltr" style="font-size:12pt; color:#000000; font-family:Calibri,Helvetica,sans-serif">\r\n<p style="margin-top:0; margin-bottom:0"><br>\r\n</p>\r\n</div>\r\n</body>\r\n</html>\r\n'}, 'start': {'dateTime': '2018-02-16T10:00:00.0000000', 'timeZone': 'Europe/London'}, 'end': {'dateTime': '2018-02-16T10:30:00.0000000', 'timeZone': 'Europe/London'}, 'location': {'displayName': '', 'address': {}}, 'recurrence': None, 'attendees': [], 'organizer': {'emailAddress': {'name': 'Wijesinghe, Nalintha', 'address': 'nalintha.wijesinghe@kcl.ac.uk'}}}]}
-
-
-'''
+    def test_get_day_events_dict(self):
+        outlook_events = [{'start': datetime.datetime(2018, 2, 6, 9, 30), 'end': datetime.datetime(2018, 2, 6, 10, 0),
+                           'is_all_day': False},
+                          {'start': datetime.datetime(2018, 2, 6, 10, 0), 'end': datetime.datetime(2018, 2, 6, 10, 15),
+                           'is_all_day': False},
+                          {'start': datetime.datetime(2018, 2, 7, 10, 30), 'end': datetime.datetime(2018, 2, 7, 10, 45),
+                           'is_all_day': False}
+                          ]
+        output = self.booking_obj.get_day_events_dict(outlook_events)
+        self.assertEqual(len(output.keys()),2)
+        self.assertEqual(len(output[datetime.date(2018, 2, 6)]), 2)
+        self.assertEqual(len(output[datetime.date(2018, 2, 7)]), 1)
 
 
 class OutlookServiceTests(TestCase):

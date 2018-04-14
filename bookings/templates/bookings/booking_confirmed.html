@@ -1,16 +1,23 @@
-<!DOCTYPE html>
+{% load static %}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Booking Confirmed</title>
-    <h1>Your booking has been confirmed!</h1>
+    <link rel="stylesheet" href='/static/meeting_scheduler/css/master.css'>
 </head>
-<body>
-    <p>Thanks {{ event.first_name }}!</p>
+    <div class="group">
+      <code class="default"><h1>Your booking has been confirmed.</h1></code>
+      <section>
+        <code>
+            <p>Thanks {{ event.first_name }}! </p>
+            <p>Your booking has been successfully made for <b>{{  event.date_time }}.</b></p>
+            <p>A confirmation email has been sent to your email address.</p>
+            <p>If you wish to cancel or update your meeting, you can do so through the confirmation.</p>
+        </code>
+      </section>
 
-    <p>Your appointment is booked for {{  event.date_time }}.</p>
-
-    <p>Duration: {{ event.duration }} minutes</p>
-
-</body>
+      <aside>
+        <code><p>Duration: {{ event.duration }} minutes</p></code>
+      </aside>
+    </div>
 </html>

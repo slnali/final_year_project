@@ -90,12 +90,13 @@ class EventBookingForm(forms.ModelForm):
         override_existing_event = False
         for choice in default_choices:
             if event_start and not override_existing_event and event_start.date() == self.booking_date.date():
-                if event_start < self.booking_date + datetime.timedelta(minutes=choice) <= event_end:
+                if event_start <= self.booking_date + datetime.timedelta(minutes=choice) <= event_end:
                     possible_choices.append(choice)
                     continue
                 elif self.booking_date + datetime.timedelta(minutes=choice) > event_end and possible_choices:
                     override_existing_event = True
-            if (self.booking_date + datetime.timedelta(minutes=choice)).time() in free_slots and event_not_clashed:
+            if (self.booking_date + datetime.timedelta(minutes=choice)).time() in free_slots and \
+                    event_not_clashed: #or not override_existing_event if event_start else True:
                 possible_choices.append(choice)
             elif event_not_clashed and not override_existing_event:
                 possible_choices.append(choice)
@@ -103,6 +104,9 @@ class EventBookingForm(forms.ModelForm):
             else:
                 break
         return self.tuplify_choices(possible_choices)
+
+    def tuplify_choices(self, durations):
+        return tuple([(duration, duration) for duration in durations])
 
 class UpdateEventBookingForm(EventBookingForm):
     # or can have a if condition on init pass through kwargs

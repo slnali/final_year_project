@@ -11,6 +11,11 @@
     color: azure;
 }
 
+.g-recaptcha {
+    transform:scale(1.05);
+    transform-origin:0 0;
+}
+
 header{
     margin: 0 1.5% 24px 1.5%;
 }
@@ -21,17 +26,59 @@ h1 {
     font-size: 250%;
 }
 
+.header1{
+    color: darkblue;
+    font-family: "Avenir Next Condensed";
+    font-size: 250%;
+}
+
 code {
-  background: #fff;
+  background: darkblue;
   border-radius: 6px;
   color: #fff;
   display: block;
-  font: 14px/24px "Source Code Pro", Inconsolata, "Lucida Console", Terminal, "Courier New", Courier;
+  font: 24px/24px "Avenir Next Condensed";
   padding: 24px 15px;
   text-align: center;
 }
-
-.g-recaptcha {
-    transform:scale(1.05);
-    transform-origin:0 0;
+.default {
+  background: none;
+  color: #666;
 }
+.group:before,
+.group:after {
+  content: "";
+  display: table;
+}
+.group:after {
+  clear: both;
+}
+.group {
+  background: #eaeaed;
+  border-radius: 6px;
+  clear: both;
+  *zoom: 1;
+}
+.group,
+header,
+section,
+aside,
+footer {
+  margin: 0 1.5% 24px 1.5%;
+}
+section {
+  float: left;
+  width: 63%;
+}
+aside {
+  float: right;
+  width: 30%;
+}
+footer {
+  margin-bottom: 0;
+}
+
+b{
+   font-weight: 600;
+}
+

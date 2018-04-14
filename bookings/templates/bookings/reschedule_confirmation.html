@@ -1,21 +1,30 @@
-<!DOCTYPE html>
+{% load static %}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <h1>Update Booking</h1>
-
-    <hr>
+    <title>Update Booking</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href='/static/meeting_scheduler/css/master.css'>
 </head>
-<body>
+<div class="group">
+      <code class="default"><h1>Update Booking</h1></code>
+      <section>
+        <code>
+            <p>You are about to change the start time of your booking:<b> {{ event.date_time }}</b></p>
+            <br>
+            <p>Old start time: {{ event.date_time }}</p>
+            <p>New start time: {{ updated_start }}</p>
+            <br>
+            <p>Are you sure you want to reschedule your booking?</p>
+            <form name="confirm_slot_reschedule" method="post" action="{% url 'bookings:confirm_slot_reschedule' slot=slot date=date event_pk=event.pk duration=duration %}">
+                {% csrf_token %}
+                <input style="font-size : 16px; height:50px; width:150px" type="submit" class="save btn btn-default" value="Confirm Reschedule"/>
+            </form>
+        </code>
+      </section>
 
-<h2><b>You are about to change the start time of your booking:</b></h2>
-<h3>Old start time: {{ event.date_time }}</h3>
-<h3>New start time: {{ updated_start }}</h3>
-<h3>Duration: {{ duration }} minutes</h3>
-<h3>Are you sure you wish to reschedule your booking?</h3>
-<form name="confirm_slot_reschedule" method="post" action="{% url 'bookings:confirm_slot_reschedule' slot=slot date=date event_pk=event.pk duration=duration %}">
-    {% csrf_token %}
-    <input type="submit" value="Confirm Reschedule" />
-</form>
-</body>
+      <aside>
+        <code><p>Duration: {{ duration }} minutes</p></code>
+      </aside>
+    </div>
 </html>

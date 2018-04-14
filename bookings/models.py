@@ -16,6 +16,7 @@ class BookingAvailability(models.Model):
     # and the second element is the human-readable name
     # Show availability in increments of?
     AVAILABILITY_INCREMENTS = (
+        (5, 5),
         (10, 10),
         (15, 15),
         (20, 20),
@@ -23,9 +24,6 @@ class BookingAvailability(models.Model):
         (40, 40),
         (45, 45),
         (60, 60),
-        (90, 90),
-        (120, 120),
-        (180, 180),
     )
     # add default values for weeekdays sames as YCBM
     # SHOULD BE WHOLE NUMBERS 8:00, 8:10,dont allow 8:02
@@ -71,11 +69,11 @@ class BookingAvailability(models.Model):
     def get_next_7_days(start_date, format=False):
         return [start_date.strftime('%a %d/%m/%y') if format else start_date] + \
                [(start_date + datetime.timedelta(days=num)).strftime('%a %d/%m/%y')
-                if format else (start_date + datetime.timedelta(days=num)) for num in range(1, 7)]
+                if format else (start_date + datetime.timedelta(days=num)) for num in range(1, 8)]
 
     def get_time_ranges(self):  # getattr ['monday_,tuesday
         filter_none = lambda lst: [elem for elem in lst if elem is not None]
-        default_start,default_end = [datetime.time(23,59)],[datetime.time(0,0)]
+        default_start, default_end = [datetime.time(23, 59)], [datetime.time(0, 0)]
         start_times = [self.monday_from, self.tuesday_from,
                        self.wednesday_from, self.thursday_from,
                        self.friday_from, self.saturday_from,
@@ -105,14 +103,58 @@ class BookingAvailability(models.Model):
     def get_day_time_availability_dict(self, days, times, format=True):  ##change name for this!!!!
         data = []
         outlook_events = self.parse_outlook_events_into_dict(self.get_outlook_events(days))
+        short_breaks = self.get_breaks_between_close_sets_of_events(days, outlook_events)
         for time in times:
             dic = {}
             for day in days:
-                if self.slot_is_available(time.time(), day, outlook_events):
-                    dic[day.strftime('%a %d/%m/%y') if format else day] = time.time().strftime('%H:%M') if format else\
+                if self.slot_is_available(time.time(), day, outlook_events, short_breaks):
+                    dic[day.strftime('%a %d/%m/%y') if format else day] = time.time().strftime('%H:%M') if format else \
                         time.time()
             data.append(dic)
         return data
+
+    def get_breaks_between_close_sets_of_events(self, days, events):
+        '''
+        	9:30 – 10 10 – 10:15 10:30 – 10:45 (15) seq = 3   3+ 15 minutes or or less
+        find cumulative difference between meetings if greater than 15 and 3 or more meetings then don't worry otherwise
+        :return:
+        '''
+        break_slots = []
+        # { 'datetime()' : [{start, end} {start, end}], '']
+        day_events_dict = self.get_day_events_dict(events)
+        for day in days:
+            if day_events_dict.get(day):
+                day_events = day_events_dict.get(day)
+                if len(events) < 3:  # if less than 3 events skip day
+                    continue
+                cumulative_difference = 0
+                possible_times = []
+                i = 0
+                for event in day_events:
+                    if i == 0:
+                        previous_event_end_time = event['end']
+                        i+=1
+                        continue
+                    difference = event['start'] - previous_event_end_time
+                    diff_in_minutes = int(difference.seconds / 60)
+                    if 0< diff_in_minutes <= 15:
+                        possible_times.append(previous_event_end_time)#, 'end': previous_event_end_time})
+                        cumulative_difference += diff_in_minutes
+                    previous_event_end_time = event['end']
+                if cumulative_difference > 20:
+                    continue
+                break_slots.append( possible_times )
+        return [inner for outer in break_slots for inner in outer]
+
+
+    def get_day_events_dict(self, events):
+        dic = {}
+        for event in events:
+            if dic.get(event['start'].date()):
+                dic[event['start'].date()].append(event)
+            else:
+                dic[event['start'].date()] = [event]
+        return dic
 
     def get_day_availability_dict(self):  # store as JSONFIELD?
         return {
@@ -126,7 +168,7 @@ class BookingAvailability(models.Model):
             'Lunch': {'start': self.lunch_from, 'end': self.lunch_to},
         }
 
-    def slot_is_available(self, time, day, outlook_events):
+    def slot_is_available(self, time, day, outlook_events, short_break_slots=[]):
         '''
         Checks whether time slot for day is available
         3 main checks
@@ -139,6 +181,8 @@ class BookingAvailability(models.Model):
         :return: True/False
         '''
         combined_date_time = datetime.datetime.combine(day, time)
+        if combined_date_time in short_break_slots:
+            return False
         if datetime.date.today() == day and datetime.datetime.now() > combined_date_time:
             return False
         if not self.is_slot_within_booking_availability(combined_date_time):
@@ -149,7 +193,7 @@ class BookingAvailability(models.Model):
             return False
         return True
 
-    def get_combined_start_end_and_current_datetime(self, start,end,current):
+    def get_combined_start_end_and_current_datetime(self, start, end, current):
         combine = lambda time: datetime.datetime.combine(datetime.date.min, time)
         return combine(start), combine(end), combine(current)
 
@@ -173,15 +217,15 @@ class BookingAvailability(models.Model):
         )
         return True if start_time <= current_time < end_time else False
 
-    def get_outlook_events(self, dates, as_timzone=False):
+    def get_outlook_events(self, dates, as_timezone=False):
         token = self.account_social.socialtoken_set.get()
         if token.expires_at < timezone.now():
             set_new_token(token)
         email = self.account_social.user.email
         outlook_events = get_events_between_dates(access_token=token, user_email=email,
-                                                  start_date=dates[0].isoformat() if not as_timzone else
+                                                  start_date=dates[0].isoformat() if not as_timezone else
                                                   dates[0].astimezone().isoformat(),
-                                                  end_date=dates[-1].isoformat() if not as_timzone else
+                                                  end_date=dates[-1].isoformat() if not as_timezone else
                                                   dates[-1].astimezone().isoformat(), )
         return outlook_events
 
