@@ -1,14 +1,11 @@
-import requests
-import uuid
 import json
+import uuid
 
-'''implement all of our Outlook API functions in this file'''
+import requests
 
-# This is the resource we would like to access after authentication succeeds
 graph_endpoint = 'https://graph.microsoft.com/v1.0{0}'
 
 
-# Generic API Sending
 def make_api_call(method, url, token, user_email, payload=None, parameters=None):
     '''
     Make HTTP requests to REST API endpoint
@@ -22,14 +19,13 @@ def make_api_call(method, url, token, user_email, payload=None, parameters=None)
     specfic data
     :return:
     '''
-    # Send these headers with all API calls
     request_id = str(uuid.uuid4())
     headers = {'User-Agent': 'meeting_scheduler/1.0',
                'Authorization': 'Bearer {0}'.format(token),
                'Accept': 'application/json',
                'X-AnchorMailbox': user_email,
                'Prefer': 'outlook.timezone="Europe/London"',
-               #instrumentation
+               # instrumentation
                'client-request-id': request_id,
                'return-client-request-id': 'true'
                }
@@ -48,42 +44,24 @@ def make_api_call(method, url, token, user_email, payload=None, parameters=None)
     return response
 
 
-def get_me(access_token):
-    get_me_url = graph_endpoint.format('/me')
-
-    # Use OData query parameters to control the results
-    #  - Only return the displayName and mail fields
-    query_parameters = {'$select': 'displayName,mail'}
-
-    r = make_api_call('GET', get_me_url, access_token, "", parameters=query_parameters)
-
-    if r.status_code == requests.codes.ok:
-        return r.json()
-    else:
-        return "{0}: {1}".format(r.status_code, r.text)
-
-
-
-def get_my_events(access_token, user_email):
+def get_outlook_events(access_token, user_email):
     '''
     Get outlook events
     # Use OData query parameters to control the results
-    #  - Only first 10 results returned
-    #  - Only return the Subject, Start, and End fields
-    #  - Sort the results by the Start field in ascending order
+    Params order
+    #  - first 10 results returned
+    #  - get Subject, Start, and End fields
+    #  - sort results by start field in ascending datetime order
     :param access_token:
     :param user_email:
     :return: dict containing events
     '''
-    get_events_url = graph_endpoint.format('/me/events')
+    events_endpoint = graph_endpoint.format('/me/events')
+    query_params = {'$top': '10',
+                    '$select': 'subject,start,end',
+                    '$orderby': 'start/dateTime ASC'}
 
-
-    query_parameters = {'$top': '10',
-                        '$select': 'subject,start,end',
-                        '$orderby': 'start/dateTime ASC'}
-
-    r = make_api_call('GET', get_events_url, access_token, user_email, parameters=query_parameters)
-
+    r = make_api_call('GET', events_endpoint, access_token, user_email, parameters=query_params)
     if r.status_code == requests.codes.ok:
         return r.json()
     else:
@@ -99,20 +77,17 @@ def get_events_between_dates(access_token, user_email, start_date, end_date):
     :param end_date: iso format end date
     :return: dictionary containing value key which maps to list of dicts for each event
     '''
-    get_events_url = graph_endpoint.format('/me/calendarview')
-
-    query_parameters = {'startdatetime': start_date,
-                        'enddatetime': end_date}
-
-    r = make_api_call('GET', get_events_url, access_token, user_email, parameters=query_parameters)
-
+    events_endpoint = graph_endpoint.format('/me/calendarview')
+    query_params = {'startdatetime': start_date,
+                    'enddatetime': end_date}
+    r = make_api_call('GET', events_endpoint, access_token, user_email, parameters=query_params)
     if r.status_code == requests.codes.ok:
         return r.json()
     else:
         return "{0}: {1}".format(r.status_code, r.text)
 
 
-def update_booking(access_token,user_email,event,body_content):
+def update_booking(access_token, user_email, event, body_content):
     '''
     Update existing outlook event time
     :param access_token:
@@ -121,7 +96,7 @@ def update_booking(access_token,user_email,event,body_content):
     :param body_content: HTML content for update email auto sent by user
     :return: dict response containing saved event data or string if errored
     '''
-    event_endpoint = graph_endpoint.format('/me/events/{}'.format(event['outlook_id']))
+    events_endpoint = graph_endpoint.format('/me/events/{}'.format(event['outlook_id']))
     payload = {
         "subject": event['subject'],
         "body": {
@@ -134,10 +109,10 @@ def update_booking(access_token,user_email,event,body_content):
         },
         "end": {
             "dateTime": event['end_time'].astimezone().isoformat(),
-            "timeZone":"Europe/London"
+            "timeZone": "Europe/London"
         },
     }
-    r = make_api_call('PATCH', event_endpoint, access_token, user_email, payload=payload)
+    r = make_api_call('PATCH', events_endpoint, access_token, user_email, payload=payload)
     if r.status_code == requests.codes.ok:
         return r.json()
     else:
@@ -150,16 +125,12 @@ def cancel_booking(access_token, user_email, event_id):
     :param access_token:
     :param user_email:
     :param event_id: outlook id of users event
-    :return: True if event was successfully cancelled else False
+    :return: True if event was successfully cancelled (204) else False
     '''
-    event_endpoint = graph_endpoint.format('/me/events/{}'.format(event_id))
-    r = make_api_call('DELETE', event_endpoint, access_token, user_email)
-    #check that the request has been processed but no content has been responded (204)
-    if r.status_code == requests.codes.no_content:
-        return True
-    else:
-        return False
-
+    events_endpoint = graph_endpoint.format('/me/events/{}'.format(event_id))
+    r = make_api_call('DELETE', events_endpoint, access_token, user_email)
+    # check that the request has been processed but no content has been responded (204)
+    return True if r.status_code == requests.codes.no_content else False
 
 
 def book_event(access_token, user_email, event, body_content):
@@ -170,9 +141,9 @@ def book_event(access_token, user_email, event, body_content):
     :param user_email:
     :param event: event dict containing event info
     :param body_content: HTML content to be sent in email auto sent to booker by user
-    :return:
+    :return: dict with booking details including created event id
     '''
-    event_endpoint = graph_endpoint.format('/me/events')
+    events_endpoint = graph_endpoint.format('/me/events')
 
     payload = {
         "subject": event['subject'],
@@ -199,9 +170,8 @@ def book_event(access_token, user_email, event, body_content):
         ]
     }
 
-    r = make_api_call('POST', event_endpoint, access_token, user_email, payload=payload)
-
-    #check if resource has been created (201)
+    r = make_api_call('POST', events_endpoint, access_token, user_email, payload=payload)
+    # check if resource has been created (201)
     if r.status_code == requests.codes.created:
         return r.json()
     else:

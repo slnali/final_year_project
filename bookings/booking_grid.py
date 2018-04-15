@@ -3,7 +3,7 @@ from django_tables2 import A, columns
 
 class BookingGrid(tables.Table):
     '''
-    Slot booking widget
+    Meeting booking widget
     '''
     current_day_plus_0 = tables.LinkColumn()
     current_day_plus_1 = tables.LinkColumn()

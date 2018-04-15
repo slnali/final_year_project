@@ -1,13 +1,12 @@
-import dateutil.parser
-from django.core.exceptions import ValidationError
-from django.db import models
-from allauth.socialaccount.models import SocialAccount
-from bookings.outlookservice import get_events_between_dates
-# from bookings.views import set_new_token
-from bookings.authhelper import set_new_token
-from django.utils import timezone
-from django.core.validators import validate_email
 import datetime
+
+import dateutil.parser
+from allauth.socialaccount.models import SocialAccount
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from django.db import models
+
+from bookings.outlookservice import get_events_between_dates
 
 
 class BookingAvailability(models.Model):
@@ -335,9 +334,9 @@ class Event(models.Model):
     date_time = models.CharField(max_length=200)
     start_time = models.DateTimeField(blank=True)
     end_time = models.DateTimeField(blank=True)
-    first_name = models.CharField(max_length=200, blank=False)  # change names
-    last_name = models.CharField(max_length=200, blank=True)  # change names
-    email = models.EmailField(max_length=200, blank=False, validators=[validate_email])
+    first_name = models.CharField(max_length=200, blank=False)
+    last_name = models.CharField(max_length=200, blank=True)
+    email = models.EmailField(max_length=200, blank=False, validators=[validate_email, custom_validate_kcl_email])
     duration = models.IntegerField(choices=())
     subject = models.CharField(max_length=500, blank=True)
     outlook_id = models.CharField(max_length=1000, blank=True, null=True)

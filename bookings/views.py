@@ -17,7 +17,7 @@ from bookings.authhelper import set_new_token
 from bookings.booking_grid import BookingGrid
 from bookings.forms import BookingAvailabilityForm, EventBookingForm, UpdateEventBookingForm
 from bookings.models import BookingAvailability, Event
-from bookings.outlookservice import get_my_events, cancel_booking, book_event, update_booking
+from bookings.outlookservice import get_outlook_events, cancel_booking, book_event, update_booking
 
 
 def events(request):
@@ -30,7 +30,7 @@ def events(request):
     user_email = request.user.email
     set_new_token(request,token_obj)
     access_token = token_obj.token
-    outlook_events = get_my_events(access_token, user_email)
+    outlook_events = get_outlook_events(access_token, user_email)
     context = {'events': outlook_events['value']}
     return render(request, 'bookings/events.html', context)
 
@@ -55,7 +55,8 @@ def set_account_availability(request):
                 availability = form.save(commit=False)
                 availability.account_social = account
                 availability.save()
-        return HttpResponseRedirect(reverse('bookings:set_account_availability'))  # redirect to same page
+        # redirect to same page
+        return HttpResponseRedirect(reverse('bookings:set_account_availability'))
     else:
         # GET request
         # check if account has a availabiliy object
@@ -139,9 +140,7 @@ def book_meeting_slot(request, slot, date, pk, event_pk):
         form = EventBookingForm(date=date, booking_availability=booking_availability,
                                 initial={'date_time': date.strftime('%A, %-d %B %Y %H:%M')})
         return render(request, 'bookings/event_booking_form.html', {'form': form, 'captcha':True})
-    # return HttpResponse('Booking for {} on {}'.format(slot, date))
 
-'''REFACTOR THIS NAME!!!!'''
 def update_meeting_slot(request, slot, date, pk, event_pk):
     """
     Display Update Booking form for updating event, then continue to reschedule confirmation screen
@@ -168,7 +167,6 @@ def update_meeting_slot(request, slot, date, pk, event_pk):
     else:
         form = UpdateEventBookingForm(date=date_obj, booking_availability=booking_availability, event=event)
         return render(request, 'bookings/event_booking_form.html', {'form': form})
-    # return HttpResponse('Booking for {} on {}'.format(slot, date))
 
 
 def confirm_slot_reschedule(request, slot, date, event_pk, duration):
@@ -280,8 +278,7 @@ def display_available_time_slots(request, name, pk, date=None, action=None, even
     :param event_pk:
     :return: GET specified weeks events according to booking availability
     """
-    '''TODO IF EVENT DOESNT EXIST DISPLAY MESSAGE EVENT HAS BEEN CANCELLED AND CANNOT BE UPDATED'''
-    account = SocialAccount.objects.filter(user__id=int(pk))[0]  # change to pk in url!!!!!! e.g. random user
+    account = SocialAccount.objects.filter(user__id=int(pk))[0]
     booking_availabilty_preferences = BookingAvailability.objects.filter(account_social__id=account.pk)[0]
     if date:
         date = datetime.datetime.strptime(date, '%x')
@@ -301,12 +298,11 @@ def display_available_time_slots(request, name, pk, date=None, action=None, even
     set_new_token(request,account.socialtoken_set.get())
     table_data = booking_availabilty_preferences.get_time_slot_data(start_date=date)
     days = BookingAvailability.get_next_7_days(date, format=True)
-    if int(event_pk):  # because sometimes '0' string is passed when no event is needed
+    if int(event_pk):
         table = BookingGrid(table_data, days=days, pk = int(pk), viewname='bookings:update_meeting_slot', event_pk=int(event_pk))
     else:
         table = BookingGrid(table_data, days=days, pk =int(pk))
     # using RequestConfig automatically pulls values from request.GET and updates the table accordingly
-    # this enables data ordering and pagination
     RequestConfig(request, paginate=False).configure(table)
     return render(request, 'bookings/display_available_time_slots.html', {'table': table, 'name': name,
                                                                           'date': date.strftime('%x'),
