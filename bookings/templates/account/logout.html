@@ -1,0 +1,29 @@
+{% load static %}
+
+{% load i18n %}
+
+<head>
+    <meta charset="UTF-8">
+    <title>Sign Out</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href='/static/meeting_scheduler/css/master.css'>
+</head>
+
+
+<div class="group">
+      <code class="default"><h1>{% trans "Sign Out" %}</h1></code>
+    <div class="main-container">
+        <div class="fixer-container">
+            <code>
+                <p>{% trans 'Are you sure you want to sign out?' %}</p>
+                <form method="post" action="{% url 'account_logout' %}">
+                  {% csrf_token %}
+                  {% if redirect_field_value %}
+                  <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}"/>
+                  {% endif %}
+                  <button type="submit" class="save btn btn-default" style="color:black">Sign Out</button>
+                </form>
+            </code>
+        </div>
+    </div>
+</div>

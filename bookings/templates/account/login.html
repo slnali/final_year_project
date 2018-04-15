@@ -1,0 +1,30 @@
+
+{% load i18n %}
+{% load account socialaccount %}
+{% get_providers as socialaccount_providers %}
+
+<head>
+    <meta charset="UTF-8">
+    <title>Sign In</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href='/static/meeting_scheduler/css/master.css'>
+</head>
+
+<div class="group">
+      <code class="default"><h1>{% trans "Informatics Meeting Booker" %}</h1></code>
+    <div class="main-container">
+        <div class="fixer-container">
+            <code>
+                <p>{% trans 'Sign In' %}</p>
+                {% for provider in socialaccount_providers %}
+                <a title="{{provider.name}}" class="btn btn-lg btn-primary" role="button"
+                 href="{% provider_login_url provider.id process=login scope=scope auth_params=auth_params %}">Login with Outlook</a>
+                {% endfor %}
+            </code>
+        </div>
+    </div>
+</div>
+
+
+
+

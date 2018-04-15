@@ -66,6 +66,18 @@ aside,
 footer {
   margin: 0 1.5% 24px 1.5%;
 }
+
+.main-container {
+      float: left;
+      position: relative;
+      left: 50%;
+    }
+.fixer-container {
+  float: left;
+  position: relative;
+  left: -50%;
+}
+
 section {
   float: left;
   width: 63%;
