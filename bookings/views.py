@@ -1,28 +1,23 @@
 import datetime
-import time
 
 import requests
 from allauth.socialaccount.models import SocialToken, SocialAccount
 from django.conf import settings
+from django.contrib import messages
 from django.core.mail import send_mail
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect
 from django.template.loader import render_to_string
-from django.utils import timezone
 from django.utils.timezone import make_aware
 from django.views.generic import DetailView
 from django_tables2 import RequestConfig
-from django.contrib import messages
-from bookings.authhelper import get_signin_url, get_token_from_code, set_new_token
+
+from bookings.authhelper import set_new_token
 from bookings.booking_grid import BookingGrid
 from bookings.forms import BookingAvailabilityForm, EventBookingForm, UpdateEventBookingForm
 from bookings.models import BookingAvailability, Event
-# Add import statement to include new function
-from bookings.outlookservice import get_me, get_my_events, cancel_booking, book_event, update_booking
-
-
-
+from bookings.outlookservice import get_my_events, cancel_booking, book_event, update_booking
 
 
 def events(request):
@@ -33,10 +28,7 @@ def events(request):
     """
     token_obj = SocialToken.objects.filter(account__user__id=request.user.pk)[0]
     user_email = request.user.email
-    # Check if token has expired
-    if token_obj.expires_at < timezone.now():
-        # refresh token
-        set_new_token(token_obj)
+    set_new_token(request,token_obj)
     access_token = token_obj.token
     outlook_events = get_my_events(access_token, user_email)
     context = {'events': outlook_events['value']}
@@ -109,9 +101,7 @@ def book_meeting_slot(request, slot, date, pk, event_pk):
     """
     account = SocialAccount.objects.filter(user__id=int(pk))[0]
     token_obj = account.socialtoken_set.get()
-    if token_obj.expires_at < timezone.now():
-        # refresh token
-        set_new_token(token_obj)
+    set_new_token(request,token_obj)
     booking_availability = BookingAvailability.objects.filter(account_social__id=account.pk)[0]
     date = datetime.datetime.strptime(slot + ' ' + date, '%H:%M %a %d/%m/%y')
     if request.method == 'POST':
@@ -195,9 +185,7 @@ def confirm_slot_reschedule(request, slot, date, event_pk, duration):
     event = Event.objects.filter(pk=int(event_pk))[0]
     social_account = event.social_account
     token_obj = social_account.socialtoken_set.get()
-    if token_obj.expires_at < timezone.now():
-        # refresh token
-        set_new_token(token_obj)
+    set_new_token(request,token_obj)
     date_obj = datetime.datetime.strptime(slot + ' ' + date, '%H:%M %a %d/%m/%y')
     event_dict = {'start_time': make_aware(date_obj), 'outlook_id':event.outlook_id, 'end_time':
         make_aware(date_obj + datetime.timedelta(minutes=int(duration))),
@@ -234,9 +222,7 @@ def cancel_booking_slot(request, event_pk):
         # send request to cancel/delete outlook event
         social_account = event.social_account
         token_obj = social_account.socialtoken_set.get()
-        if token_obj.expires_at < timezone.now():
-            # refresh token
-            set_new_token(token_obj)
+        set_new_token(request,token_obj)
         if cancel_booking(token_obj, social_account.user.email, event.outlook_id):
             event.delete()  # send email
             msg_html = render_to_string('bookings/email_cancellation.html',
@@ -312,6 +298,7 @@ def display_available_time_slots(request, name, pk, date=None, action=None, even
     elif not date:
         date = datetime.datetime.today().date()
         appear = False
+    set_new_token(request,account.socialtoken_set.get())
     table_data = booking_availabilty_preferences.get_time_slot_data(start_date=date)
     days = BookingAvailability.get_next_7_days(date, format=True)
     if int(event_pk):  # because sometimes '0' string is passed when no event is needed

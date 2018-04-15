@@ -261,8 +261,6 @@ class BookingAvailability(models.Model):
         :return:
         '''
         token = self.account_social.socialtoken_set.get()
-        if token.expires_at < timezone.now():
-            set_new_token(token)
         email = self.account_social.user.email
         outlook_events = get_events_between_dates(
             access_token=token,
