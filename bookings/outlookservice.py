@@ -10,33 +10,31 @@ graph_endpoint = 'https://graph.microsoft.com/v1.0{0}'
 
 # Generic API Sending
 def make_api_call(method, url, token, user_email, payload=None, parameters=None):
-    '''generic method for sending API requests
-     This function uses the requests library to send API requests.
-     It sets a standard set of headers on each requests, including client instrumentation.
-
-    It also uses the email address we retrieved from the ID token
-    to set the X-AnchorMailbox header. By setting this header,
-    we enable the API endpoint to route API calls to the correct
-     backend mailbox server more efficiently. This is why we want
-     to get the user's email address.'''
+    '''
+    Make HTTP requests to REST API endpoint
+    :param method: HTTP method e.g GET,POST
+    :param url: endpoint of server to send request to
+    :param token: authorization & authentication token
+    :param user_email:
+    :param payload: submit data to endpoint
+    through a dictionary that is parsed to JSON
+    :param parameters: query parameters for retrieving
+    specfic data
+    :return:
+    '''
     # Send these headers with all API calls
+    request_id = str(uuid.uuid4())
     headers = {'User-Agent': 'meeting_scheduler/1.0',
                'Authorization': 'Bearer {0}'.format(token),
                'Accept': 'application/json',
                'X-AnchorMailbox': user_email,
-               'Prefer': 'outlook.timezone="Europe/London"'}
-
-    # Use these headers to instrument calls. Makes it easier
-    # to correlate requests and responses in case of problems
-    # and is a recommended best practice.
-    request_id = str(uuid.uuid4())
-    instrumentation = {'client-request-id': request_id,
-                       'return-client-request-id': 'true'}
-
-    headers.update(instrumentation)
+               'Prefer': 'outlook.timezone="Europe/London"',
+               #instrumentation
+               'client-request-id': request_id,
+               'return-client-request-id': 'true'
+               }
 
     response = None
-
     if method.upper() == 'GET':
         response = requests.get(url, headers=headers, params=parameters)
     elif method.upper() == 'DELETE':
@@ -47,7 +45,6 @@ def make_api_call(method, url, token, user_email, payload=None, parameters=None)
     elif method.upper() == 'POST':
         headers.update({'Content-Type': 'application/json'})
         response = requests.post(url, headers=headers, data=json.dumps(payload), params=parameters)
-
     return response
 
 
