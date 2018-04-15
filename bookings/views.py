@@ -21,55 +21,25 @@ from bookings.models import BookingAvailability, Event
 # Add import statement to include new function
 from bookings.outlookservice import get_me, get_my_events, cancel_booking, book_event, update_booking
 
-# Create your views here.
 
-'''Connect to outlook view'''
-def home(request):
-    redirect_uri = request.build_absolute_uri(reverse('bookings:gettoken'))
-    sign_in_url = get_signin_url(redirect_uri)
-    context = {'signin_url': sign_in_url}
-    return render(request, 'bookings/home.html', context)
-
-
-def gettoken(request):
-    auth_code = request.GET.get('code', '')
-    redirect_uri = request.build_absolute_uri(reverse('bookings:gettoken'))
-    token = get_token_from_code(auth_code, redirect_uri)
-    access_token = token.get('access_token', '')
-    user = get_me(access_token)
-    refresh_token = token.get('refresh_token', '')
-    expires_in = token.get('expires_in', 1000)
-
-    # expires_in is in seconds
-    # Get current timestamp (seconds since Unix Epoch) and
-    # add expires_in to get expiration time
-    # Subtract 5 minutes to allow for clock differences
-    expiration = int(time.time()) + expires_in - 300
-
-    # Save the token in the session
-    request.session['access_token'] = access_token
-    request.session['refresh_token'] = refresh_token
-    request.session['token_expires'] = expiration
-    request.session['user_email'] = user['mail']
-    return HttpResponseRedirect(reverse('bookings:events'))
 
 
 
 def events(request):
     """
-    Display outlook events ofr current week
+    Display grid of upcoming outlook events
     :param request:
     :return: events view
     """
-    token_obj = SocialToken.objects.filter(account__user__id=request.user.pk, account__provider='microsoft')[0]
+    token_obj = SocialToken.objects.filter(account__user__id=request.user.pk)[0]
     user_email = request.user.email
     # Check if token has expired
     if token_obj.expires_at < timezone.now():
         # refresh token
         set_new_token(token_obj)
     access_token = token_obj.token
-    events = get_my_events(access_token, user_email)
-    context = {'events': events['value']}
+    outlook_events = get_my_events(access_token, user_email)
+    context = {'events': outlook_events['value']}
     return render(request, 'bookings/events.html', context)
 
 def set_account_availability(request):

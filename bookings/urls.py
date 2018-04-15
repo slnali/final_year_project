@@ -7,11 +7,7 @@ TODO REMOVE REDUNDANT URLS AND REMOVE FROM REPORT
 urlpatterns = [
 
     # The home view ('/bookings/')
-    url(r'^$', views.home, name='home'),
-    # Explicit home ('/bookings/home/')
-    url(r'^home/$', views.home, name='home'),
-    # Redirect to get token ('/bookings/gettoken/')
-    url(r'^gettoken/$', views.gettoken, name='gettoken'),
+    url(r'^$', views.events, name='events'),
     #Events view ('/bookings/events/')
     url(r'^events/$',views.events,name='events'),
     #Booking preferences view
