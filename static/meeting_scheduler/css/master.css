@@ -1,3 +1,7 @@
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
 
 .navbar-inverse{
     background: darkblue;
@@ -15,6 +19,8 @@
     transform:scale(1.05);
     transform-origin:0 0;
 }
+
+
 
 header{
     margin: 0 1.5% 24px 1.5%;
@@ -67,7 +73,7 @@ footer {
   margin: 0 1.5% 24px 1.5%;
 }
 
-.main-container {
+.outer-container {
       float: left;
       position: relative;
       left: 50%;
